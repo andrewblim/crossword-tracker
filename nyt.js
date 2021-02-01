@@ -41,7 +41,15 @@ const captureBoardState = function () {
     cell = document.getElementById(`cell-id-${i}`);
   }
   return boardState;
-}
+};
+
+const generateEvent = function (type, info = {}) {
+  return {
+    type: type,
+    timestamp: new Date().getTime(),
+    ...info
+  };
+};
 
 const veilCallback = function (mutationsList, _observer) {
   let start = false, stop = false;
@@ -57,17 +65,19 @@ const veilCallback = function (mutationsList, _observer) {
       }
     }
   }
+
   if (start) {
-    console.log("start");
-    boardState = captureBoardState();
-    console.log(boardState);
-  } else if (stop) {
-    console.log("stop");
+    const event = generateEvent("start", { boardState: captureBoardState() });
+    console.log(event);
+  }
+  else if (stop) {
+    const event = generateEvent("stop");
+    console.log(event);
   }
 };
 
 const cellCallback = function (mutationsList, _observer) {
-  let x, y, update;
+  let x, y, fill;
   let reveal = false, check = false;
   for (const mutation of mutationsList) {
     if (mutation.type == "characterData") {
@@ -75,7 +85,7 @@ const cellCallback = function (mutationsList, _observer) {
       if (mutation.target.parentElement.classList.contains(hiddenClass)) {
         continue;
       }
-      update = mutation.target.data;
+      fill = mutation.target.data;
       x = (mutation.target.parentElement.getAttribute("x") - xFillOffset) / xSize;
       y = (mutation.target.parentElement.getAttribute("y") - yFillOffset) / ySize;
     }
@@ -119,13 +129,16 @@ const cellCallback = function (mutationsList, _observer) {
   // nothing to trigger unless we've found an (x,y) to update
   if (x !== undefined && y !== undefined) {
     if (reveal) {
-      console.log(`Reveal (${x},${y}) with ${update}`);
+      const event = generateEvent("reveal", { x, y, fill });
+      console.log(event);
     }
     else if (check) {
-      console.log(`Check (${x},${y})`);
+      const event = generateEvent("check", { x, y });
+      console.log(event);
     }
     else {
-      console.log(`Update (${x},${y}) with ${update}`);
+      const event = generateEvent("update", { x, y, fill });
+      console.log(event);
     }
   }
 };
