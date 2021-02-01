@@ -14,6 +14,8 @@ const yCellOffset = 3;
 const xFillOffset = 19.5;
 const yFillOffset = 33.25;
 
+let eventLog = [];
+
 const captureBoardState = function () {
   let boardState = [];
   let x, y, fill;
@@ -68,11 +70,11 @@ const veilCallback = function (mutationsList, _observer) {
 
   if (start) {
     const event = generateEvent("start", { boardState: captureBoardState() });
-    console.log(event);
+    eventLog.push(event);
   }
   else if (stop) {
     const event = generateEvent("stop");
-    console.log(event);
+    eventLog.push(event);
   }
 };
 
@@ -105,7 +107,11 @@ const cellCallback = function (mutationsList, _observer) {
           x = addition.getAttribute("x") / xSize;
           y = addition.getAttribute("y") / ySize;
         }
+        // ignore addition of other nodes, such as the <use> element
+        // that appears when you check/reveal
       }
+      // ignore node removal, which can happen if you have <use> elements
+      // but then you reset the puzzle
     }
     else if (mutation.type == "attributes") {
       // ignore anything other than modifications to the <use> object
@@ -130,15 +136,15 @@ const cellCallback = function (mutationsList, _observer) {
   if (x !== undefined && y !== undefined) {
     if (reveal) {
       const event = generateEvent("reveal", { x, y, fill });
-      console.log(event);
+      eventLog.push(event);
     }
     else if (check) {
       const event = generateEvent("check", { x, y });
-      console.log(event);
+      eventLog.push(event);
     }
     else {
       const event = generateEvent("update", { x, y, fill });
-      console.log(event);
+      eventLog.push(event);
     }
   }
 };
@@ -166,3 +172,15 @@ for (const cell of cells) {
     }
   );
 }
+
+chrome.runtime.onMessage.addListener(
+  function (request, sender, sendResponse) {
+    if (request.action === "logEvents") {
+      console.log(eventLog);
+    }
+    else if (request.action === "saveEvents") {
+      // can't download from a content script, foist this off to sender
+      sendResponse({ events: eventLog });
+    }
+  }
+);
