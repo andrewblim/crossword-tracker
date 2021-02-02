@@ -1,4 +1,10 @@
 // magic constants (from NYT's crossword CSS/HTML)
+
+const infoClass = "PuzzleDetails-details--1WqAl";
+const titleClass = "PuzzleDetails-title--iv1IG";
+const dateClass = "PuzzleDetails-date--1HNzj";
+const bylineClass = "PuzzleDetails-byline--16J5w";
+
 const layoutClass = "Layout-unveilable--3OmrG";
 const veilClass = "Veil-veil--3oKaF";
 const cellClass = "Cell-cell--1p4gH";
@@ -7,6 +13,7 @@ const hiddenClass = "Cell-hidden--3xQI1";
 const revealedClass = "Shame-revealed--3jDzk";
 const checkedClass = "Shame-checked--3E9GW";
 const modifiedClass = "Shame-modified--2Mbw4";
+
 const xSize = 33;
 const ySize = 33;
 const xCellOffset = 3;
@@ -68,13 +75,14 @@ const veilCallback = function (mutationsList, _observer) {
     }
   }
 
-  if (start) {
-    const event = generateEvent("start", { boardState: captureBoardState() });
-    eventLog.push(event);
+  if (start && eventLog.length === 0) {
+    eventLog.push(generateEvent("start", { boardState: captureBoardState() }));
+  }
+  else if (start) {
+    eventLog.push(generateEvent("start")); // only generate board state if first event
   }
   else if (stop) {
-    const event = generateEvent("stop");
-    eventLog.push(event);
+    eventLog.push(generateEvent("stop"));
   }
 };
 
@@ -135,19 +143,27 @@ const cellCallback = function (mutationsList, _observer) {
   // nothing to trigger unless we've found an (x,y) to update
   if (x !== undefined && y !== undefined) {
     if (reveal) {
-      const event = generateEvent("reveal", { x, y, fill });
-      eventLog.push(event);
+      eventLog.push(generateEvent("reveal", { x, y, fill }));
     }
     else if (check) {
-      const event = generateEvent("check", { x, y });
-      eventLog.push(event);
+      eventLog.push(generateEvent("check", { x, y }));
     }
     else {
-      const event = generateEvent("update", { x, y, fill });
-      eventLog.push(event);
+      eventLog.push(generateEvent("update", { x, y, fill }));
     }
   }
 };
+
+// get metadata
+
+const puzzleInfoElem = document.querySelector(`div.${infoClass}`);
+const titleElem = puzzleInfoElem.querySelector(`div.${titleClass}`);
+const title = titleElem === null ? null : titleElem.textContent;
+const dateElem = puzzleInfoElem.querySelector(`div.${dateClass}`);
+const date = dateElem === null ? null : dateElem.textContent;
+const bylineElem = puzzleInfoElem.querySelector(`div.${bylineClass}`);
+// byline info is in one or more sub-spans
+const byline = bylineElem === null ? null : Array.from(bylineElem.children).map(x => x.textContent).join(" - ");
 
 // TODO: enable/disable observed based on trackingEnabled
 
@@ -176,11 +192,28 @@ for (const cell of cells) {
 chrome.runtime.onMessage.addListener(
   function (request, sender, sendResponse) {
     if (request.action === "logEvents") {
-      console.log(eventLog);
+      console.log({
+        title: title,
+        date: date,
+        byline: byline,
+        events: eventLog,
+      });
     }
     else if (request.action === "saveEvents") {
       // can't download from a content script, foist this off to sender
-      sendResponse({ events: eventLog });
+      let defaultFilename = window.location.pathname;
+      defaultFilename = defaultFilename.replace(/^\/crosswords\/game\//, "");
+      defaultFilename = defaultFilename.replace(/\//g, "-");
+      defaultFilename = "nyt-" + defaultFilename + ".json";
+      sendResponse({
+        data: {
+          title: title,
+          date: date,
+          byline: byline,
+          events: eventLog,
+        },
+        defaultFilename: defaultFilename,
+      });
     }
   }
 );
