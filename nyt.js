@@ -22,6 +22,9 @@ const revealedClass = "Shame-revealed--3jDzk";
 const checkedClass = "Shame-checked--3E9GW";
 const modifiedClass = "Shame-modified--2Mbw4";
 
+const appWrapperClass = "app-appWrapper--2PSLL";
+const congratsClass = "CongratsModal-congratsModalContent--19hpv";
+
 const xSize = 33;
 const ySize = 33;
 const xCellOffset = 3;
@@ -225,6 +228,20 @@ for (const cell of cells) {
     }
   );
 }
+
+// observe app wrapper, to detect the congrats modal
+const appWrapper = document.querySelector(`div.${appWrapperClass}`);
+const appWrapperObserver = new MutationObserver((mutationsList, _observer) => {
+  for (const mutation of mutationsList) {
+    if (mutation.target.querySelector(`.${congratsClass}`) !== null) {
+      eventLog.push(generateEvent("submit", { success: true }));
+      break;
+    }
+  }
+});
+appWrapperObserver.observe(appWrapper, { childList: true });
+
+// interaction with popup
 
 chrome.runtime.onMessage.addListener(
   function (request, sender, sendResponse) {
