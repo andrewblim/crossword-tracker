@@ -60,20 +60,21 @@ const getXYForCellSibling = function(siblingElem) {
 // variable that keeps track of the record of solve
 let record = {};
 
-// get existing data from storage, refresh metadata with whatever we
-// are able to parse out (in other words, most recent data overrides
-// what's in storage)
 const storageKey = `record-${window.location.href}`;
 chrome.storage.local.get(storageKey, (result) => {
-  // TODO: actually do something with the result
-
-  // if for whatever reason we can't find the puzzle layout, just return
-  // we won't be able to do any logging
+  // If for whatever reason we can't find the puzzle layout, just return
+  // right away. We won't be able to do any logging.
   if (layout === null) {
     return null;
   }
 
-  // overwrite metadata with the latest
+  // Load the stored record
+  if (result[storageKey] !== undefined) {
+    record = result[storageKey];
+  }
+
+  // Overwrite metadata in the stored record with the latest
+  // (current data takes precedence over storage)
   const puzzleInfoElem = appWrapper.querySelector(`.${infoClass}`);
   if (puzzleInfoElem !== null) {
     const titleElem = puzzleInfoElem.querySelector(`.${titleClass}`);
@@ -317,10 +318,22 @@ const cellCallback = function (mutationsList, _observer) {
 
 chrome.runtime.onMessage.addListener(
   function (request, sender, sendResponse) {
-    if (request.action === "logEvents") {
+    if (request.action === "logRecord") {
       console.log(record);
     }
-    else if (request.action === "saveEvents") {
+    else if (request.action === "storeRecord") {
+      chrome.storage.local.set({ [storageKey]: record }, () => {
+        // TODO - check for failure, blank record
+        console.log(`Recorded to key ${storageKey}`);
+      });
+    }
+    else if (request.action === "clearStoredRecord") {
+      chrome.storage.local.remove(storageKey, () => {
+        // TODO - check for failure
+        console.log(`Removed data at ${storageKey}`);
+      });
+    }
+    else if (request.action === "saveRecord") {
       // can't download from a content script, foist this off to sender
       let defaultFilename = window.location.pathname;
       defaultFilename = defaultFilename.replace(/^\/crosswords\/game\//, "");
