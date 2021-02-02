@@ -21,10 +21,10 @@ saveEventsButton.addEventListener("click", async () => {
     chrome.tabs.sendMessage(
       tabs[0].id,
       { action: "saveEvents" },
-      ({ data, defaultFilename }) => {
+      ({ record, defaultFilename }) => {
         chrome.downloads.download({
           url: URL.createObjectURL(
-            new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+            new Blob([JSON.stringify(record, null, 2)], { type: "application/json" })
           ),
           filename: defaultFilename,
           saveAs: true
