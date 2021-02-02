@@ -112,6 +112,11 @@ chrome.storage.local.get(storageKey, (result) => {
     record.clueSections[title] = sectionClues;
   }
 
+  // capture initial board state if it doesn't exist
+  if (record.initialState === undefined) {
+    record.initialState = captureBoardState();
+  }
+
   // add an event log if it doesn't exist
   if (record.events === undefined) {
     record.events = [];
@@ -170,27 +175,38 @@ const attachObservers = function () {
 
 const captureBoardState = function () {
   let boardState = [];
-  let x, y, fill;
+  let x, y, label, fill;
   let i = 0;
   let cell = document.getElementById(`cell-id-${i}`);
   while (cell !== null) {
     ({ x, y } = getXYForCell(cell));
     if (cell.classList.contains(cellClass)) {
-      let elem = cell.nextElementSibling;
-      while (elem.nodeName !== "text" || elem.getAttribute("text-anchor") !== "middle") {
-        elem = elem.nextElementSibling;
+      label = undefined;
+      fill = undefined;
+      let labelElem = cell.parentElement.querySelector("[text-anchor=start]");
+      if (labelElem !== null) {
+        label = Array.from(labelElem.childNodes).find(x => x.nodeType == 3);
+        if (label !== undefined) {
+          label = label.data;
+        }
       }
-      // fish out the text content only
-      for (const elemChild of elem.childNodes) {
-        if (elemChild.nodeType === 3) {
-          fill = elemChild.data;
+      let fillElem = cell.parentElement.querySelector("[text-anchor=middle]");
+      if (fillElem !== null) {
+        fill = Array.from(fillElem.childNodes).find(x => x.nodeType == 3);
+        if (fill !== undefined) {
+          fill = fill.data;
         }
       }
     }
     else if (cell.classList.contains(blockClass)) {
-      fill = null;
+      label = undefined;
+      fill = null; // denotes that it can't be filled
     }
-    boardState.push({ x, y, fill });
+    let cellState = { x, y, fill };
+    if (label !== undefined) {
+      cellState.label = label
+    }
+    boardState.push(cellState);
     i += 1;
     cell = document.getElementById(`cell-id-${i}`);
   }
@@ -221,11 +237,8 @@ const startStopCallback = function (mutationsList, _observer) {
       }
     }
   }
-  if (start && record.events.length === 0) {
-    record.events.push(generateEvent("start", { boardState: captureBoardState() }));
-  }
-  else if (start) {
-    record.events.push(generateEvent("start")); // only generate board state if first event
+  if (start) {
+    record.events.push(generateEvent("start"));
   }
   else if (stop) {
     record.events.push(generateEvent("stop"));
