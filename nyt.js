@@ -6,6 +6,14 @@ const dateClass = "PuzzleDetails-date--1HNzj";
 const bylineClass = "PuzzleDetails-byline--16J5w";
 
 const layoutClass = "Layout-unveilable--3OmrG";
+
+const clueSectionClass = "ClueList-wrapper--3m-kd";
+const clueListTitleClass = "ClueList-title--1-3oW";
+const clueListClass = "ClueList-list--2dD5-";
+const clueClass = "Clue-li--1JoPu";
+const clueLabelClass = "Clue-label--2IdMY";
+const clueTextClass = "Clue-text--3lZl7";
+
 const veilClass = "Veil-veil--3oKaF";
 const cellClass = "Cell-cell--1p4gH";
 const blockClass = "Cell-block--1oNaD";
@@ -165,6 +173,35 @@ const bylineElem = puzzleInfoElem.querySelector(`div.${bylineClass}`);
 // byline info is in one or more sub-spans
 const byline = bylineElem === null ? null : Array.from(bylineElem.children).map(x => x.textContent).join(" - ");
 
+// get clues
+
+const clueSectionsElem = document.querySelectorAll(`div.${clueSectionClass}`);
+let clueSections = {};
+for (clueSectionElem of clueSectionsElem) {
+  let sectionClues = [];
+  const titleElem = clueSectionElem.querySelector(`.${clueListTitleClass}`);
+  const title = titleElem === null ? null : titleElem.textContent;
+  const listElem = clueSectionElem.querySelector(`.${clueListClass}`);
+  if (listElem !== null) {
+    for (clueElem of listElem.children) {
+      let clueLabel = null, clueText = null;
+      if (clueElem.nodeName === "LI" && clueElem.classList.contains(clueClass)) {
+        for (clueSubElem of clueElem.children) {
+          if (clueSubElem.classList.contains(clueLabelClass)) {
+            clueLabel = clueSubElem.textContent;
+          }
+          else if (clueSubElem.classList.contains(clueTextClass)) {
+            clueText = clueSubElem.textContent;
+          }
+        }
+      }
+      sectionClues.push({ label: clueLabel, text: clueText });
+    }
+  }
+  clueSections[title] = sectionClues;
+}
+
+
 // TODO: enable/disable observed based on trackingEnabled
 
 // observe veil, to log start/stop events
@@ -196,6 +233,7 @@ chrome.runtime.onMessage.addListener(
         title: title,
         date: date,
         byline: byline,
+        clueSections: clueSections,
         events: eventLog,
       });
     }
@@ -210,6 +248,7 @@ chrome.runtime.onMessage.addListener(
           title: title,
           date: date,
           byline: byline,
+          clueSections: clueSections,
           events: eventLog,
         },
         defaultFilename: defaultFilename,
