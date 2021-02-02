@@ -25,12 +25,74 @@ const modifiedClass = "Shame-modified--2Mbw4";
 const appWrapperClass = "app-appWrapper--2PSLL";
 const congratsClass = "CongratsModal-congratsModalContent--19hpv";
 
-const xSize = 33;
-const ySize = 33;
-const xCellOffset = 3;
-const yCellOffset = 3;
-const xFillOffset = 19.5;
-const yFillOffset = 33.25;
+// get metadata
+
+const puzzleInfoElem = document.querySelector(`div.${infoClass}`);
+const titleElem = puzzleInfoElem.querySelector(`div.${titleClass}`);
+const title = titleElem === null ? null : titleElem.textContent;
+const dateElem = puzzleInfoElem.querySelector(`div.${dateClass}`);
+const date = dateElem === null ? null : dateElem.textContent;
+const bylineElem = puzzleInfoElem.querySelector(`div.${bylineClass}`);
+// byline info is in one or more sub-spans
+const byline = bylineElem === null ? null : Array.from(bylineElem.children).map(x => x.textContent).join(" - ");
+
+// get clues
+
+const clueSectionsElem = document.querySelectorAll(`div.${clueSectionClass}`);
+let clueSections = {};
+for (clueSectionElem of clueSectionsElem) {
+  let sectionClues = [];
+  const titleElem = clueSectionElem.querySelector(`.${clueListTitleClass}`);
+  const title = titleElem === null ? null : titleElem.textContent;
+  const listElem = clueSectionElem.querySelector(`.${clueListClass}`);
+  if (listElem !== null) {
+    for (clueElem of listElem.children) {
+      let clueLabel = null, clueText = null;
+      if (clueElem.nodeName === "LI" && clueElem.classList.contains(clueClass)) {
+        for (clueSubElem of clueElem.children) {
+          if (clueSubElem.classList.contains(clueLabelClass)) {
+            clueLabel = clueSubElem.textContent;
+          }
+          else if (clueSubElem.classList.contains(clueTextClass)) {
+            clueText = clueSubElem.textContent;
+          }
+        }
+      }
+      sectionClues.push({ label: clueLabel, text: clueText });
+    }
+  }
+  clueSections[title] = sectionClues;
+}
+
+// get cell size - assumes there's at least 1 cell and that all cells
+// are the same size
+
+let xSize, ySize, xOffset, yOffset;
+let firstCell = document.getElementById("cell-id-0");
+if (firstCell !== null) {
+  xOffset = firstCell.getAttribute("x");
+  yOffset = firstCell.getAttribute("y");
+  xSize = firstCell.getAttribute("width");
+  ySize = firstCell.getAttribute("height");
+}
+
+// given a <rect>, get its (x,y)
+const getXYForCell = function(rectElem) {
+  return {
+    x: (rectElem.getAttribute("x") - xOffset) / xSize,
+    y: (rectElem.getAttribute("y") - yOffset) / ySize
+  };
+}
+
+// given a sibling element to a <rect>, get its (x,y)
+const getXYForCellSibling = function(siblingElem) {
+  for (const elem of siblingElem.parentElement.children) {
+    if (elem.nodeName === "rect") {
+      return getXYForCell(elem);
+    }
+  }
+  return null;
+}
 
 let eventLog = [];
 
@@ -40,13 +102,13 @@ const captureBoardState = function () {
   let i = 0;
   let cell = document.getElementById(`cell-id-${i}`);
   while (cell !== null) {
-    x = (cell.getAttribute("x") - xCellOffset) / xSize;
-    y = (cell.getAttribute("y") - yCellOffset) / ySize;
+    ({ x, y } = getXYForCell(cell));
     if (cell.classList.contains(cellClass)) {
       let elem = cell.nextElementSibling;
       while (elem.nodeName !== "text" || elem.getAttribute("text-anchor") !== "middle") {
         elem = elem.nextElementSibling;
       }
+      // fish out the text content only
       for (const elemChild of elem.childNodes) {
         if (elemChild.nodeType === 3) {
           fill = elemChild.data;
@@ -56,7 +118,7 @@ const captureBoardState = function () {
     else if (cell.classList.contains(blockClass)) {
       fill = null;
     }
-    boardState.push({x, y, fill});
+    boardState.push({ x, y, fill });
     i += 1;
     cell = document.getElementById(`cell-id-${i}`);
   }
@@ -107,8 +169,7 @@ const cellCallback = function (mutationsList, _observer) {
         continue;
       }
       fill = mutation.target.data;
-      x = (mutation.target.parentElement.getAttribute("x") - xFillOffset) / xSize;
-      y = (mutation.target.parentElement.getAttribute("y") - yFillOffset) / ySize;
+      ({ x, y } = getXYForCellSibling(mutation.target.parentElement));
     }
     else if (mutation.type == "childList") {
       // ignore changes in the "hidden" elements
@@ -118,19 +179,20 @@ const cellCallback = function (mutationsList, _observer) {
       for (const addition of mutation.addedNodes) {
         if (addition.classList.contains(revealedClass)) {
           reveal = true;
-          x = addition.getAttribute("x") / xSize;
-          y = addition.getAttribute("y") / ySize;
+          ({ x, y } = getXYForCellSibling(addition));
+          break;
         }
         else if (addition.classList.contains(checkedClass)) {
           check = true;
-          x = addition.getAttribute("x") / xSize;
-          y = addition.getAttribute("y") / ySize;
+          ({ x, y } = getXYForCellSibling(addition));
+          break;
         }
         // ignore addition of other nodes, such as the <use> element
         // that appears when you check/reveal
       }
-      // ignore node removal, which can happen if you have <use> elements
-      // but then you reset the puzzle
+      // note that other changes are possible; we ignore node removal,
+      // which can happen if you have <use> elements but then you
+      // reset the puzzle
     }
     else if (mutation.type == "attributes") {
       // ignore anything other than modifications to the <use> object
@@ -140,13 +202,13 @@ const cellCallback = function (mutationsList, _observer) {
       }
       if (mutation.target.classList.contains(revealedClass)) {
         reveal = true;
-        x = mutation.target.getAttribute("x") / xSize;
-        y = mutation.target.getAttribute("y") / ySize;
+        ({ x, y } = getXYForCellSibling(mutation.target));
+        break;
       }
       else if (mutation.target.classList.contains(checkedClass)) {
         check = true;
-        x = mutation.target.getAttribute("x") / xSize;
-        y = mutation.target.getAttribute("y") / ySize;
+        ({ x, y } = getXYForCellSibling(mutation.target));
+        break;
       }
     }
   }
@@ -164,46 +226,6 @@ const cellCallback = function (mutationsList, _observer) {
     }
   }
 };
-
-// get metadata
-
-const puzzleInfoElem = document.querySelector(`div.${infoClass}`);
-const titleElem = puzzleInfoElem.querySelector(`div.${titleClass}`);
-const title = titleElem === null ? null : titleElem.textContent;
-const dateElem = puzzleInfoElem.querySelector(`div.${dateClass}`);
-const date = dateElem === null ? null : dateElem.textContent;
-const bylineElem = puzzleInfoElem.querySelector(`div.${bylineClass}`);
-// byline info is in one or more sub-spans
-const byline = bylineElem === null ? null : Array.from(bylineElem.children).map(x => x.textContent).join(" - ");
-
-// get clues
-
-const clueSectionsElem = document.querySelectorAll(`div.${clueSectionClass}`);
-let clueSections = {};
-for (clueSectionElem of clueSectionsElem) {
-  let sectionClues = [];
-  const titleElem = clueSectionElem.querySelector(`.${clueListTitleClass}`);
-  const title = titleElem === null ? null : titleElem.textContent;
-  const listElem = clueSectionElem.querySelector(`.${clueListClass}`);
-  if (listElem !== null) {
-    for (clueElem of listElem.children) {
-      let clueLabel = null, clueText = null;
-      if (clueElem.nodeName === "LI" && clueElem.classList.contains(clueClass)) {
-        for (clueSubElem of clueElem.children) {
-          if (clueSubElem.classList.contains(clueLabelClass)) {
-            clueLabel = clueSubElem.textContent;
-          }
-          else if (clueSubElem.classList.contains(clueTextClass)) {
-            clueText = clueSubElem.textContent;
-          }
-        }
-      }
-      sectionClues.push({ label: clueLabel, text: clueText });
-    }
-  }
-  clueSections[title] = sectionClues;
-}
-
 
 // TODO: enable/disable observed based on trackingEnabled
 
