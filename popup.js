@@ -20,9 +20,9 @@ document.getElementById("store-record").addEventListener("click", async () => {
   });
 });
 
-document.getElementById("clear-stored-record").addEventListener("click", async () => {
+document.getElementById("clear-record").addEventListener("click", async () => {
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-    chrome.tabs.sendMessage(tabs[0].id, { action: "clearStoredRecord" });
+    chrome.tabs.sendMessage(tabs[0].id, { action: "clearRecord" });
   });
 });
 

@@ -61,20 +61,26 @@ const getXYForCellSibling = function(siblingElem) {
 let record = {};
 
 const storageKey = `record-${window.location.href}`;
-chrome.storage.local.get(storageKey, (result) => {
-  // If for whatever reason we can't find the puzzle layout, just return
-  // right away. We won't be able to do any logging.
-  if (layout === null) {
-    return null;
-  }
 
-  // Load the stored record
-  if (result[storageKey] !== undefined) {
-    record = result[storageKey];
-  }
+// If for whatever reason we can't find the puzzle layout,
+// skip everything
+if (layout !== null) {
+  chrome.storage.local.get(storageKey, (result) => {
+    // Load the stored record
+    if (result[storageKey] !== undefined) {
+      record = result[storageKey];
+    }
 
-  // Overwrite metadata in the stored record with the latest
-  // (current data takes precedence over storage)
+    // Overwrite metadata in the stored record with the latest
+    // (current data takes precedence over storage)
+    recordMetadata();
+
+    // Attach all observers
+    attachObservers();
+  });
+}
+
+const recordMetadata = function () {
   const puzzleInfoElem = appWrapper.querySelector(`.${infoClass}`);
   if (puzzleInfoElem !== null) {
     const titleElem = puzzleInfoElem.querySelector(`.${titleClass}`);
@@ -122,10 +128,7 @@ chrome.storage.local.get(storageKey, (result) => {
   if (record.events === undefined) {
     record.events = [];
   }
-
-  // attach all observers
-  attachObservers();
-});
+}
 
 let observers = {};
 
@@ -166,7 +169,7 @@ const attachObservers = function () {
   observers.submit = new MutationObserver((mutationsList, _observer) => {
     for (const mutation of mutationsList) {
       if (mutation.target.querySelector(`.${congratsClass}`) !== null) {
-        record.events.push(generateEvent("submit", { success: true }));
+        recordEvent("submit", { success: true });
         break;
       }
     }
@@ -214,12 +217,22 @@ const captureBoardState = function () {
   return boardState;
 };
 
-const generateEvent = function (type, info = {}) {
-  return {
+// Automatically store every this many events
+const storeFrequency = 20;
+
+const recordEvent = function (type, info = {}) {
+  record.events.push({
     type: type,
     timestamp: new Date().getTime(),
     ...info
-  };
+  });
+  if (type === "submit" && info.success) {
+    storeRecord(storageKey, record);
+    // TODO: trigger save
+  }
+  else if (record.events.length % storeFrequency === 0) {
+    storeRecord(storageKey, record);
+  }
 };
 
 const startStopCallback = function (mutationsList, _observer) {
@@ -239,14 +252,21 @@ const startStopCallback = function (mutationsList, _observer) {
     }
   }
   if (start) {
-    record.events.push(generateEvent("start"));
+    recordEvent("start");
   }
   else if (stop) {
-    record.events.push(generateEvent("stop"));
+    recordEvent("stop");
   }
 };
 
 const cellCallback = function (mutationsList, _observer) {
+  // don't update any cells if we are currently in stopped state
+  // this prevents us from re-adding already-solved cells as events
+  // if we partially solve, then navigate away
+  if (currentlyStopped()) {
+    return;
+  }
+
   let x, y, fill;
   let reveal = false, check = false;
   for (const mutation of mutationsList) {
@@ -303,15 +323,48 @@ const cellCallback = function (mutationsList, _observer) {
   // nothing to trigger unless we've found an (x,y) to update
   if (x !== undefined && y !== undefined) {
     if (reveal) {
-      record.events.push(generateEvent("reveal", { x, y, fill }));
+      recordEvent("reveal", { x, y, fill });
     }
     else if (check) {
-      record.events.push(generateEvent("check", { x, y }));
+      recordEvent("check", { x, y });
     }
     else {
-      record.events.push(generateEvent("update", { x, y, fill }));
+      recordEvent("update", { x, y, fill });
     }
   }
+};
+
+// store management
+
+const storeRecord = function (key, record) {
+  chrome.storage.local.set({ [key]: record }, () => {
+    // TODO - check for failure, blank record
+    console.log(`Recorded to key ${key}`);
+  });
+};
+
+const clearRecord = function (key) {
+  chrome.storage.local.remove(key, () => {
+    // TODO - check for failure
+    console.log(`Removed data at ${key}`);
+    record = {};
+    recordMetadata();
+  });
+};
+
+const currentlyStopped = function() {
+  return (record.events.length == 0 ||
+          record.events[record.events.length - 1].type == "stop");
+}
+
+// if we navigate away/close tab, record a stop event if
+// we aren't already stopped, and write the record out
+// TODO: should I be doing this in a service worker?
+window.onbeforeunload = function () {
+  if (!currentlyStopped()) {
+    recordEvent("stop");
+  }
+  storeRecord(storageKey, record);
 };
 
 // interaction with popup
@@ -322,19 +375,12 @@ chrome.runtime.onMessage.addListener(
       console.log(record);
     }
     else if (request.action === "storeRecord") {
-      chrome.storage.local.set({ [storageKey]: record }, () => {
-        // TODO - check for failure, blank record
-        console.log(`Recorded to key ${storageKey}`);
-      });
+      storeRecord(storageKey, record);
     }
-    else if (request.action === "clearStoredRecord") {
-      chrome.storage.local.remove(storageKey, () => {
-        // TODO - check for failure
-        console.log(`Removed data at ${storageKey}`);
-      });
+    else if (request.action === "clearRecord") {
+      clearRecord(storageKey);
     }
     else if (request.action === "saveRecord") {
-      // can't download from a content script, foist this off to sender
       let defaultFilename = window.location.pathname;
       defaultFilename = defaultFilename.replace(/^\/crosswords\/game\//, "");
       defaultFilename = defaultFilename.replace(/\//g, "-");
