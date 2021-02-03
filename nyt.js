@@ -24,6 +24,15 @@ const checkedClass = "Shame-checked--3E9GW";
 const modifiedClass = "Shame-modified--2Mbw4";
 const congratsClass = "CongratsModal-congratsModalContent--19hpv";
 
+// other constants, not user-configurable
+
+const storageKey = `record-${window.location.href}`;
+
+// Things that we eventually want to make user-configurable options
+// TODO: options page
+
+const storeFrequency = 999;
+
 // important basic elements we expect to find in the DOM
 const appWrapper = document.querySelector(`div.${appWrapperClass}`);
 const layout = appWrapper === null ? null : appWrapper.querySelector(`div.${layoutClass}`);
@@ -59,8 +68,6 @@ const getXYForCellSibling = function(siblingElem) {
 
 // variable that keeps track of the record of solve
 let record = {};
-
-const storageKey = `record-${window.location.href}`;
 
 // If for whatever reason we can't find the puzzle layout,
 // skip everything
@@ -217,21 +224,23 @@ const captureBoardState = function () {
   return boardState;
 };
 
-// Automatically store every this many events
-const storeFrequency = 20;
-
 const recordEvent = function (type, info = {}) {
   record.events.push({
     type: type,
     timestamp: new Date().getTime(),
     ...info
   });
-  if (type === "submit" && info.success) {
-    storeRecord(storageKey, record);
-    // TODO: trigger save
+  let successfulSubmit = type === "submit" && info.success;
+  let timeToRecord = record.events.length % storeFrequency === 0;
+  if (successfulSubmit || timeToRecord) {
+    chrome.runtime.sendMessage({
+      action: "storeRecord",
+      key: storageKey,
+      record: record,
+    });
   }
-  else if (record.events.length % storeFrequency === 0) {
-    storeRecord(storageKey, record);
+  if (successfulSubmit) {
+    // TODO: trigger save
   }
 };
 
@@ -288,8 +297,7 @@ const cellCallback = function (mutationsList, _observer) {
           reveal = true;
           ({ x, y } = getXYForCellSibling(addition));
           break;
-        }
-        else if (addition.classList.contains(checkedClass)) {
+        } else if (addition.classList.contains(checkedClass)) {
           check = true;
           ({ x, y } = getXYForCellSibling(addition));
           break;
@@ -301,18 +309,14 @@ const cellCallback = function (mutationsList, _observer) {
       // which can happen if you have <use> elements but then you
       // reset the puzzle
     }
-    else if (mutation.type == "attributes") {
+    else if (mutation.type == "attributes" && mutation.target.nodeName === "use") {
       // ignore anything other than modifications to the <use> object
       // that appears and persists once you check/reveal
-      if (mutation.target.nodeName !== "use") {
-        continue;
-      }
       if (mutation.target.classList.contains(revealedClass)) {
         reveal = true;
         ({ x, y } = getXYForCellSibling(mutation.target));
         break;
-      }
-      else if (mutation.target.classList.contains(checkedClass)) {
+      } else if (mutation.target.classList.contains(checkedClass)) {
         check = true;
         ({ x, y } = getXYForCellSibling(mutation.target));
         break;
@@ -324,32 +328,12 @@ const cellCallback = function (mutationsList, _observer) {
   if (x !== undefined && y !== undefined) {
     if (reveal) {
       recordEvent("reveal", { x, y, fill });
-    }
-    else if (check) {
+    } else if (check) {
       recordEvent("check", { x, y });
-    }
-    else {
+    } else {
       recordEvent("update", { x, y, fill });
     }
   }
-};
-
-// store management
-
-const storeRecord = function (key, record) {
-  chrome.storage.local.set({ [key]: record }, () => {
-    // TODO - check for failure, blank record
-    console.log(`Recorded to key ${key}`);
-  });
-};
-
-const clearRecord = function (key) {
-  chrome.storage.local.remove(key, () => {
-    // TODO - check for failure
-    console.log(`Removed data at ${key}`);
-    record = {};
-    recordMetadata();
-  });
 };
 
 const currentlyStopped = function() {
@@ -359,12 +343,13 @@ const currentlyStopped = function() {
 
 // if we navigate away/close tab, record a stop event if
 // we aren't already stopped, and write the record out
-// TODO: should I be doing this in a service worker?
 window.onbeforeunload = function () {
-  if (!currentlyStopped()) {
-    recordEvent("stop");
-  }
-  storeRecord(storageKey, record);
+  if (!currentlyStopped()) { recordEvent("stop"); }
+  chrome.runtime.sendMessage({
+    action: "storeRecord",
+    key: storageKey,
+    record: record,
+  });
 };
 
 // interaction with popup
@@ -373,19 +358,26 @@ chrome.runtime.onMessage.addListener(
   function (request, sender, sendResponse) {
     if (request.action === "logRecord") {
       console.log(record);
-    }
-    else if (request.action === "storeRecord") {
-      storeRecord(storageKey, record);
-    }
-    else if (request.action === "clearRecord") {
-      clearRecord(storageKey);
-    }
-    else if (request.action === "saveRecord") {
-      let defaultFilename = window.location.pathname;
-      defaultFilename = defaultFilename.replace(/^\/crosswords\/game\//, "");
-      defaultFilename = defaultFilename.replace(/\//g, "-");
-      defaultFilename = "nyt-" + defaultFilename + ".json";
-      sendResponse({ record: record, defaultFilename: defaultFilename });
+    } else if (request.action === "storeRecord") {
+      // service worker manages storage
+      chrome.runtime.sendMessage({
+        action: "storeRecord",
+        key: storageKey,
+        record: record,
+      });
+    } else if (request.action === "clearRecord") {
+      // service worker manages storage
+      chrome.runtime.sendMessage({
+        action: "clearRecord",
+        key: storageKey,
+      });
+      record = {};
+      recordMetadata();
+    } else if (request.action === "saveRecord") {
+      let defaultStub = window.location.pathname
+        .replace(/^\/crosswords\/game\//, "")
+        .replace(/\//g, "-");
+      sendResponse({ record: record, defaultFilename: `nyt-${defaultStub}.json` });
     }
   }
 );
