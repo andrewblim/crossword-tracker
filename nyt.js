@@ -31,11 +31,11 @@ const storageKey = `record-${window.location.href}`;
 // Things that we eventually want to make user-configurable options
 // TODO: options page
 
-const storeFrequency = 999;
+const storeFrequency = 20;
 
 // important basic elements we expect to find in the DOM
 const appWrapper = document.querySelector(`div.${appWrapperClass}`);
-const layout = appWrapper === null ? null : appWrapper.querySelector(`div.${layoutClass}`);
+const layout = appWrapper?.querySelector(`div.${layoutClass}`);
 
 // get cell size - assumes there's at least 1 cell and that all cells
 // are the same size
@@ -59,54 +59,66 @@ const getXYForCell = function(rectElem) {
 // given a sibling element to a <rect>, get its (x,y)
 const getXYForCellSibling = function(siblingElem) {
   for (const elem of siblingElem.parentElement.children) {
-    if (elem.nodeName === "rect") {
-      return getXYForCell(elem);
-    }
+    if (elem.nodeName === "rect") { return getXYForCell(elem); }
   }
-  return null;
+  return { x: null, y: null };
 }
 
-// variable that keeps track of the record of solve
-let record = {};
+// iterate through cells
+const forEachCell = function (f) {
+  let i = 0;
+  let cell = document.getElementById(`cell-id-${i}`);
+  while (cell !== null) {
+    f(i, cell);
+    i += 1;
+    cell = document.getElementById(`cell-id-${i}`);
+  }
+}
+
+let record, observers;
 
 // If for whatever reason we can't find the puzzle layout,
-// skip everything
-if (layout !== null) {
+// nothing happens at all - record and observers should
+// remain undefined, and there will be no observation of
+// updates or logging
+if (layout !== null && layout !== undefined) {
   chrome.storage.local.get(storageKey, (result) => {
-    // Load the stored record
+    // TODO: versioning check here, if stored result format needs an upgrade
     if (result[storageKey] !== undefined) {
       record = result[storageKey];
+    } else {
+      record = {}
     }
-
-    // Overwrite metadata in the stored record with the latest
-    // (current data takes precedence over storage)
-    recordMetadata();
-
-    // Attach all observers
+    updateRecordMetadata();
+    observers = {};
     attachObservers();
   });
 }
 
-const recordMetadata = function () {
-  const puzzleInfoElem = appWrapper.querySelector(`.${infoClass}`);
-  if (puzzleInfoElem !== null) {
-    const titleElem = puzzleInfoElem.querySelector(`.${titleClass}`);
-    const dateElem = puzzleInfoElem.querySelector(`.${dateClass}`);
-    const bylineElem = puzzleInfoElem.querySelector(`.${bylineClass}`);
-    record.title = titleElem === null ? null : titleElem.textContent;
-    record.date = dateElem === null ? null : dateElem.textContent;
-    // byline info is in one or more sub-spans
-    record.byline = bylineElem === null ? null : Array.from(bylineElem.children).map(x => x.textContent).join(" - ");
+// Update record with metadata from the DOM, capture initial
+// state if it is not already present
+const updateRecordMetadata = function () {
+  const puzInfo = appWrapper.querySelector(`.${infoClass}`);
+
+  const title = puzInfo?.querySelector(`.${titleClass}`)?.textContent;
+  if (title !== undefined) { record.title = title; }
+  const date = puzInfo?.querySelector(`.${dateClass}`)?.textContent;
+  if (date !== undefined) { record.date = date; }
+
+  // byline info is in one or more sub-spans
+  const bylineElem = puzInfo?.querySelector(`.${bylineClass}`) || undefined;
+  if (bylineElem !== undefined) {
+    record.byline = Array.from(bylineElem.children)
+      .map(x => x.textContent)
+      .join(" - ");
   }
 
-  // overwrite clues with the latest
-  const clueListWrapperElems = layout.querySelectorAll(`.${clueListWrapperClass}`);
   record.clueSections = {};
-  for (clueListWrapperElem of clueListWrapperElems) {
-    let sectionClues = [];
+  for (clueListWrapperElem of layout.querySelectorAll(`.${clueListWrapperClass}`)) {
     const titleElem = clueListWrapperElem.querySelector(`.${clueListTitleClass}`);
-    const title = titleElem === null ? null : titleElem.textContent;
+    const title = titleElem?.textContent || "";
     const listElem = clueListWrapperElem.querySelector(`.${clueListClass}`);
+    let sectionClues = [];
     if (listElem !== null) {
       sectionClues = Array.from(listElem.children)
         .filter(elem => elem.nodeName === "LI" && elem.classList.contains(clueClass))
@@ -115,8 +127,7 @@ const recordMetadata = function () {
           for (clueSubElem of clueElem.children) {
             if (clueSubElem.classList.contains(clueLabelClass)) {
               clueLabel = clueSubElem.textContent;
-            }
-            else if (clueSubElem.classList.contains(clueTextClass)) {
+            } else if (clueSubElem.classList.contains(clueTextClass)) {
               clueText = clueSubElem.textContent;
             }
           }
@@ -126,21 +137,16 @@ const recordMetadata = function () {
     record.clueSections[title] = sectionClues;
   }
 
-  // capture initial board state if it doesn't exist
+  // for initialState/events we defer to existing values
   if (record.initialState === undefined) {
     record.initialState = captureBoardState();
   }
-
-  // add an event log if it doesn't exist
   if (record.events === undefined) {
     record.events = [];
   }
 }
 
-let observers = {};
-
-// TODO: enable/disable observed based on trackingEnabled
-
+// TODO: enable/disable observers based on trackingEnabled
 const attachObservers = function () {
   // Observe the layout to detect whether a start/stop event
   // has occurred (addition of a "veil" element)
@@ -151,9 +157,7 @@ const attachObservers = function () {
   // and checks. Specifically, the parent <g> elements of the <rect>
   // cells, since reveal/check activity shows up as additional
   // siblings elements to the <rect> cells.
-  let i = 0;
-  let cell = document.getElementById(`cell-id-${i}`);
-  while (cell !== null) {
+  forEachCell((_, cell) => {
     if (cell.classList.contains(cellClass)) {
       observers[cell.id] = new MutationObserver(cellCallback);
       observers[cell.id].observe(
@@ -164,12 +168,10 @@ const attachObservers = function () {
           subtree: true,
           characterData: true,
           attributeFilter: ["class"],
-        }
+        },
       );
     }
-    i += 1;
-    cell = document.getElementById(`cell-id-${i}`);
-  }
+  });
 
   // Observe app wrapper, to detect the congrats modal, which
   // we treat as a submit event
@@ -186,41 +188,28 @@ const attachObservers = function () {
 
 const captureBoardState = function () {
   let boardState = [];
-  let x, y, label, fill;
-  let i = 0;
-  let cell = document.getElementById(`cell-id-${i}`);
-  while (cell !== null) {
+  forEachCell( (i, cell) => {
+    let x, y, label, fill;
     ({ x, y } = getXYForCell(cell));
     if (cell.classList.contains(cellClass)) {
-      label = undefined;
-      fill = undefined;
       let labelElem = cell.parentElement.querySelector("[text-anchor=start]");
       if (labelElem !== null) {
-        label = Array.from(labelElem.childNodes).find(x => x.nodeType == 3);
-        if (label !== undefined) {
-          label = label.data;
-        }
+        label = Array.from(labelElem.childNodes).find(x => x.nodeType == 3)?.data;
       }
       let fillElem = cell.parentElement.querySelector("[text-anchor=middle]");
       if (fillElem !== null) {
-        fill = Array.from(fillElem.childNodes).find(x => x.nodeType == 3);
-        if (fill !== undefined) {
-          fill = fill.data;
-        }
+        fill = Array.from(fillElem.childNodes).find(x => x.nodeType == 3)?.data;
       }
-    }
-    else if (cell.classList.contains(blockClass)) {
+    } else if (cell.classList.contains(blockClass)) {
       label = undefined;
-      fill = null; // denotes that it can't be filled
+      fill = null; // denotes that it is a non-fillable cell
     }
     let cellState = { x, y, fill };
     if (label !== undefined) {
       cellState.label = label
     }
     boardState.push(cellState);
-    i += 1;
-    cell = document.getElementById(`cell-id-${i}`);
-  }
+  });
   return boardState;
 };
 
@@ -247,23 +236,16 @@ const recordEvent = function (type, info = {}) {
 const startStopCallback = function (mutationsList, _observer) {
   let start = false, stop = false;
   for (const mutation of mutationsList) {
-    for (addition of mutation.addedNodes) {
-      if (addition.classList.contains(veilClass)) {
-        stop = true;
-        break;
-      }
+    if (Array.from(mutation.addedNodes).find(x => x.classList.contains(veilClass))) {
+      stop = true;
     }
-    for (addition of mutation.removedNodes) {
-      if (addition.classList.contains(veilClass)) {
-        start = true;
-        break;
-      }
+    if (Array.from(mutation.removedNodes).find(x => x.classList.contains(veilClass))) {
+      start = true;
     }
   }
   if (start) {
     recordEvent("start");
-  }
-  else if (stop) {
+  } else if (stop) {
     recordEvent("stop");
   }
 };
@@ -336,6 +318,8 @@ const cellCallback = function (mutationsList, _observer) {
   }
 };
 
+// We should be in a stopped state if and only if the last event
+// was a stop event (or there have been no events yet at all)
 const currentlyStopped = function() {
   return (record.events.length == 0 ||
           record.events[record.events.length - 1].type == "stop");
@@ -372,7 +356,7 @@ chrome.runtime.onMessage.addListener(
         key: storageKey,
       });
       record = {};
-      recordMetadata();
+      updateRecordMetadata();
     } else if (request.action === "saveRecord") {
       let defaultStub = window.location.pathname
         .replace(/^\/crosswords\/game\//, "")
