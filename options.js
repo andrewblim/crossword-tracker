@@ -26,39 +26,73 @@ const printableName = function(record) {
 }
 
 const recordEntriesElem = document.getElementById("record-entries");
+const addOrUpdateRow = (id, record) => {
+  let row = document.getElementById(key);
+  if (row) {
+    // update fields that might be different
+    const recordName = row.children[0];
+    recordName.textContent = "";
+    if (record.url) {
+      const recordLink = document.createElement("a");
+      recordLink.setAttribute("target", "_blank");
+      recordLink.setAttribute("href", record.url);
+      recordLink.textContent = printableName(record);
+      recordName.append(recordLink);
+    } else {
+      recordName.textContent = printableName(record);
+    }
+  } else {
+    // add new row
+    row = document.createElement("tr");
+    row.id = key;
+    const recordName = document.createElement("td");
+    if (record.url) {
+      const recordLink = document.createElement("a");
+      recordLink.setAttribute("target", "_blank");
+      recordLink.setAttribute("href", record.url);
+      recordLink.textContent = printableName(record);
+      recordName.append(recordLink);
+    } else {
+      recordName.textContent = printableName(record);
+    }
+    row.append(recordName);
+
+    // TODO - add download/delete functionality
+    const recordDownload = document.createElement("td");
+    recordDownload.textContent = "[ ]";
+    row.append(recordDownload);
+    const recordDelete = document.createElement("td");
+    recordDelete.textContent = "[ ]";
+    row.append(recordDelete);
+    recordEntriesElem.append(row);
+  }
+}
+
 chrome.storage.sync.get(
   null,
   (result) => {
     for (key of Object.keys(result)) {
-      if (key.startsWith("record-")) {
-        const row = document.createElement("tr");
-        row.id = key;
-
-        const record = result[key];
-        const recordName = document.createElement("td");
-        if (record.url) {
-          const recordLink = document.createElement("a");
-          recordLink.setAttribute("target", "_blank");
-          recordLink.setAttribute("href", record.url);
-          recordLink.textContent = printableName(record);
-          recordName.appendChild(recordLink);
-        } else {
-          recordName.textContent = printableName(record);
-        }
-        row.appendChild(recordName);
-
-        // TODO - add download/delete functionality
-        const recordDownload = document.createElement("td");
-        recordDownload.textContent = "[ ]";
-        row.appendChild(recordDownload);
-        const recordDelete = document.createElement("td");
-        recordDelete.textContent = "[ ]";
-        row.appendChild(recordDelete);
-        recordEntriesElem.appendChild(row);
-      }
+      if (key.startsWith("record-")) { addOrUpdateRow(key, result[key]); }
     }
   }
 )
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  for (const key of Object.keys(changes)) {
+    if (key.startsWith("record-")) {
+      const change = changes[key];
+      if (change.newValue) {
+        addOrUpdateRow(key, change.newValue)
+        // if the row's there, update it, else add it
+      } else if (change.oldValue) {
+        // if the row's there, delete it
+        const row = document.getElementById(key);
+        if (row) { row.remove(); }
+      }
+      console.log("Event fired on key " + key);
+    }
+  }
+});
 
 document.getElementById("delete-all-records").addEventListener("click", () => {
   if (confirm("Are you sure you want to delete all records? This cannot be undone.")) {
