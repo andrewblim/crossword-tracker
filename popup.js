@@ -1,23 +1,17 @@
-const trackingEnabledInput = document.getElementById("tracking-enabled");
-
-chrome.storage.local.get("trackingEnabled", ({ trackingEnabled }) => {
-  trackingEnabledInput.checked = Boolean(trackingEnabled);
-});
-
-trackingEnabledInput.addEventListener("click", async () => {
-  chrome.storage.local.set({ "trackingEnabled": trackingEnabledInput.checked });
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (trackingEnabledInput.checked) {
-      chrome.tabs.sendMessage(tabs[0].id, { action: "enableRecording" });
-      statusBar.textContent = "Enabled recording";
-    } else {
-      chrome.tabs.sendMessage(tabs[0].id, { action: "disableRecording" });
-      statusBar.textContent = "Disabled recording";
-    }
-  });
-});
-
+const solvingAs = document.getElementById("solving-as");
 const statusBar = document.getElementById("status-bar");
+
+chrome.storage.sync.get("solverName", ({ solverName }) => {
+  if (solverName && solverName !== "") {
+    solvingAs.textContent = `Solving as: ${solverName}`;
+  } else {
+    solvingAs.textContent = "Anonymous solver (set name in preferences)";
+  }
+});
+
+document.getElementById("preferences-link").addEventListener("click", async () => {
+  chrome.runtime.openOptionsPage();
+})
 
 document.getElementById("log-record").addEventListener("click", async () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {

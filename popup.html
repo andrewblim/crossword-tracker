@@ -6,15 +6,20 @@
     </style>
   </head>
   <body>
-    <div><b>Crossword Tracker</b></div>
+    <div>
+      <b>Crossword Tracker</b>
+    </div>
+    <div id="solving-as">
+    </div>
     <hr/>
-    <input type="checkbox" id="tracking-enabled"></input>
-    <label for="tracking-enabled">Enable tracking</label>
     <button id="log-record">Log record to console</button>
     <button id="store-record">Write record to Chrome storage</button>
     <button id="clear-record">Clear record</button>
     <button id="download-record">Download record</button>
     <hr/>
+    <div>
+      <a id="preferences-link" href="#">Preferences</a>
+    </div>
     <div id="status-bar"></div>
     <script src="popup.js"></script>
   </body>

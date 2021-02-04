@@ -28,10 +28,12 @@ const congratsClass = "CongratsModal-congratsModalContent--19hpv";
 
 const storageKey = `record-${window.location.href}`;
 
-// Things that we eventually want to make user-configurable options
-// TODO: options page
+// Variables for user-configurable options
 
-const storeFrequency = 20;
+let eventFlushFrequency;
+chrome.storage.sync.get("eventFlushFrequency", (result) => {
+  eventFlushFrequency = result.eventFlushFrequency;
+});
 
 // important basic elements we expect to find in the DOM
 const appWrapper = document.querySelector(`div.${appWrapperClass}`);
@@ -92,9 +94,7 @@ if (layout !== null && layout !== undefined) {
     updateRecordMetadata();
     observerData = [];
     createObservers();
-    chrome.storage.local.get("trackingEnabled", (result) => {
-      if (result.trackingEnabled) { enableObservers(); }
-    });
+    enableObservers();
   });
 }
 
@@ -115,6 +115,11 @@ const updateRecordMetadata = function () {
       .map(x => x.textContent)
       .join(" - ");
   }
+
+  chrome.storage.sync.get("solverName", ({ solverName }) => {
+    record.solverName = solverName;
+    return true;
+  })
 
   record.clueSections = {};
   for (clueListWrapperElem of layout.querySelectorAll(`.${clueListWrapperClass}`)) {
@@ -196,14 +201,12 @@ const enableObservers = function() {
   for (const data of observerData) {
     data.observer.observe(data.target, data.options)
   }
-  console.log("Observers enabled");
 }
 
 const disableObservers = function() {
   for (const data of observerData) {
     data.observer.disconnect();
   }
-  console.log("Observers disabled");
 }
 
 const captureBoardState = function () {
@@ -240,7 +243,10 @@ const recordEvent = function (type, info = {}) {
     ...info
   });
   let successfulSubmit = type === "submit" && info.success;
-  let timeToRecord = record.events.length % storeFrequency === 0;
+  let timeToRecord;
+  if (eventFlushFrequency) {
+    timeToRecord = record.events.length % eventFlushFrequency === 0;
+  }
   if (successfulSubmit || timeToRecord) {
     chrome.runtime.sendMessage({
       action: "storeRecord",

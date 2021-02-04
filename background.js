@@ -1,5 +1,19 @@
+// Set some default preference values if they are not set.
+// See options page for all preferences.
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({ "trackingEnabled": true });
+  chrome.storage.sync.get(
+    ["solverName", "eventFlushFrequency"],
+    (results) => {
+      const update = Object.assign(
+        {
+          "solverName": "",
+          "eventFlushFrequency": 20,
+        },
+        results,
+      )
+      chrome.storage.sync.set(results);
+    },
+  );
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
