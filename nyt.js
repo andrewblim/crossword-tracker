@@ -75,10 +75,10 @@ const forEachCell = function (f) {
   }
 }
 
-let record, observers;
+let record, observerData;
 
 // If for whatever reason we can't find the puzzle layout,
-// nothing happens at all - record and observers should
+// nothing happens at all - record and observerData should
 // remain undefined, and there will be no observation of
 // updates or logging
 if (layout !== null && layout !== undefined) {
@@ -90,8 +90,9 @@ if (layout !== null && layout !== undefined) {
       record = {}
     }
     updateRecordMetadata();
-    observers = {};
-    attachObservers();
+    observerData = [];
+    createObservers();
+    startObservers();
   });
 }
 
@@ -146,44 +147,59 @@ const updateRecordMetadata = function () {
   }
 }
 
-// TODO: enable/disable observers based on trackingEnabled
-const attachObservers = function () {
+const createObservers = function () {
   // Observe the layout to detect whether a start/stop event
-  // has occurred (addition of a "veil" element)
-  observers.startStop = new MutationObserver(startStopCallback);
-  observers.startStop.observe(layout, { childList: true });
+  // has occurred (addition of a "veil" element). Only needs
+  // to observe childList.
+  observerData.push({
+    observer: new MutationObserver(startStopCallback),
+    target: layout,
+    options: { childList: true },
+  });
+
+  // Observe app wrapper, to detect the congrats modal, which
+  // we treat as a successful submit. Only needs to observe
+  // childList.
+  observerData.push({
+    observer: new MutationObserver((mutationsList, _observer) => {
+      if (mutationsList.find(x => x.target.querySelector(`.${congratsClass}`))) {
+        recordEvent("submit", { success: true });
+      }
+    }),
+    target: appWrapper,
+    options: { childList: true },
+  });
 
   // Observe each square in the puzzle to detect updates, reveals,
-  // and checks. Specifically, the parent <g> elements of the <rect>
-  // cells, since reveal/check activity shows up as additional
-  // siblings elements to the <rect> cells.
+  // and checks. Needs to check childList, subtree, characterData,
+  // and attributes (for "class" only).
   forEachCell((_, cell) => {
     if (cell.classList.contains(cellClass)) {
-      observers[cell.id] = new MutationObserver(cellCallback);
-      observers[cell.id].observe(
-        cell.parentElement,
-        {
+      observerData.push({
+        observer: new MutationObserver(cellCallback),
+        target: cell.parentElement,
+        options: {
           attributes: true,
           childList: true,
           subtree: true,
           characterData: true,
           attributeFilter: ["class"],
         },
-      );
+      });
     }
   });
+}
 
-  // Observe app wrapper, to detect the congrats modal, which
-  // we treat as a submit event
-  observers.submit = new MutationObserver((mutationsList, _observer) => {
-    for (const mutation of mutationsList) {
-      if (mutation.target.querySelector(`.${congratsClass}`) !== null) {
-        recordEvent("submit", { success: true });
-        break;
-      }
-    }
-  });
-  observers.submit.observe(appWrapper, { childList: true });
+const startObservers = function() {
+  for (const data of observerData) {
+    data.observer.observe(data.target, data.options)
+  }
+}
+
+const stopObservers = function() {
+  for (const observer of observerData) {
+    observer.disconnect();
+  }
 }
 
 const captureBoardState = function () {
