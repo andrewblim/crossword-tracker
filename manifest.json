@@ -12,7 +12,7 @@
       "js": ["nyt.js"]
     }
   ],
-  "permissions": ["storage", "activeTab", "scripting", "downloads"],
+  "permissions": ["storage", "scripting", "downloads"],
   "action": {
     "default_popup": "popup.html"
   }

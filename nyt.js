@@ -82,7 +82,7 @@ let record, observers;
 // remain undefined, and there will be no observation of
 // updates or logging
 if (layout !== null && layout !== undefined) {
-  chrome.storage.local.get(storageKey, (result) => {
+  chrome.storage.sync.get(storageKey, (result) => {
     // TODO: versioning check here, if stored result format needs an upgrade
     if (result[storageKey] !== undefined) {
       record = result[storageKey];
@@ -342,26 +342,40 @@ chrome.runtime.onMessage.addListener(
   function (request, sender, sendResponse) {
     if (request.action === "logRecord") {
       console.log(record);
+      sendResponse({ success: true });
     } else if (request.action === "storeRecord") {
       // service worker manages storage
-      chrome.runtime.sendMessage({
-        action: "storeRecord",
-        key: storageKey,
-        record: record,
-      });
+      chrome.runtime.sendMessage(
+        {
+          action: "storeRecord",
+          key: storageKey,
+          record: record,
+        },
+        sendResponse,
+      );
     } else if (request.action === "clearRecord") {
       // service worker manages storage
-      chrome.runtime.sendMessage({
-        action: "clearRecord",
-        key: storageKey,
-      });
+      chrome.runtime.sendMessage(
+        {
+          action: "clearRecord",
+          key: storageKey,
+        },
+        sendResponse,
+      );
       record = {};
       updateRecordMetadata();
-    } else if (request.action === "saveRecord") {
+    } else if (request.action === "downloadRecord") {
       let defaultStub = window.location.pathname
         .replace(/^\/crosswords\/game\//, "")
         .replace(/\//g, "-");
-      sendResponse({ record: record, defaultFilename: `nyt-${defaultStub}.json` });
+      sendResponse({
+        success: true,
+        record: record,
+        defaultFilename: `nyt-${defaultStub}.json`,
+      });
     }
+    // force synchronous, otherwise calling sendResponse in the callbacks
+    // seems to cause problems
+    return true;
   }
 );
