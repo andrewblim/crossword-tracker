@@ -92,7 +92,9 @@ if (layout !== null && layout !== undefined) {
     updateRecordMetadata();
     observerData = [];
     createObservers();
-    startObservers();
+    chrome.storage.local.get("trackingEnabled", (result) => {
+      if (result.trackingEnabled) { enableObservers(); }
+    });
   });
 }
 
@@ -190,16 +192,18 @@ const createObservers = function () {
   });
 }
 
-const startObservers = function() {
+const enableObservers = function() {
   for (const data of observerData) {
     data.observer.observe(data.target, data.options)
   }
+  console.log("Observers enabled");
 }
 
-const stopObservers = function() {
-  for (const observer of observerData) {
-    observer.disconnect();
+const disableObservers = function() {
+  for (const data of observerData) {
+    data.observer.disconnect();
   }
+  console.log("Observers disabled");
 }
 
 const captureBoardState = function () {
@@ -389,6 +393,12 @@ chrome.runtime.onMessage.addListener(
         record: record,
         defaultFilename: `nyt-${defaultStub}.json`,
       });
+    } else if (request.action === "enableRecording") {
+      enableObservers();
+      sendResponse({ success: true });
+    } else if (request.action === "disableRecording") {
+      disableObservers();
+      sendResponse({ success: true });
     }
     // force synchronous, otherwise calling sendResponse in the callbacks
     // seems to cause problems

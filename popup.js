@@ -6,6 +6,15 @@ chrome.storage.local.get("trackingEnabled", ({ trackingEnabled }) => {
 
 trackingEnabledInput.addEventListener("click", async () => {
   chrome.storage.local.set({ "trackingEnabled": trackingEnabledInput.checked });
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (trackingEnabledInput.checked) {
+      chrome.tabs.sendMessage(tabs[0].id, { action: "enableRecording" });
+      statusBar.textContent = "Enabled recording";
+    } else {
+      chrome.tabs.sendMessage(tabs[0].id, { action: "disableRecording" });
+      statusBar.textContent = "Disabled recording";
+    }
+  });
 });
 
 const statusBar = document.getElementById("status-bar");

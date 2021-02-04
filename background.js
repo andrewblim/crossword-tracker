@@ -1,5 +1,5 @@
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({ "trackingEnabled": false });
+  chrome.storage.local.set({ "trackingEnabled": true });
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
