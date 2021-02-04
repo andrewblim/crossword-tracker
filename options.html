@@ -13,6 +13,17 @@
       <input type="text" id="solver-name"></input>
     </div>
     <button id="save-general">Save</button>
+    <h2>Record management</h2>
+    <table>
+      <thead>
+        <th>Name</th>
+        <th>Download</th>
+        <th>Delete</th>
+      </thead>
+      <tbody id="record-entries">
+      </tbody>
+    </table>
+    <button id="delete-all-records">Delete all records</button>
     <h2>Developer settings</h2>
     <div>
       Settings you probably only want to tinker with if you're developing
@@ -22,10 +33,6 @@
       <input type="text" id="event-flush-frequency"></input>
     </div>
     <button id="save-dev">Save</button>
-    <h2>Record management</h2>
-    <div>
-      TODO: section to manage records in storage
-    </div>
   </body>
   <script src="options.js"></script>
 </html>

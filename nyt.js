@@ -101,13 +101,13 @@ if (layout !== null && layout !== undefined) {
 // Update record with metadata from the DOM, capture initial
 // state if it is not already present
 const updateRecordMetadata = function () {
-  const puzInfo = appWrapper.querySelector(`.${infoClass}`);
+  record.url = window.location.href;
 
+  const puzInfo = appWrapper.querySelector(`.${infoClass}`);
   const title = puzInfo?.querySelector(`.${titleClass}`)?.textContent;
   if (title !== undefined) { record.title = title; }
   const date = puzInfo?.querySelector(`.${dateClass}`)?.textContent;
   if (date !== undefined) { record.date = date; }
-
   // byline info is in one or more sub-spans
   const bylineElem = puzInfo?.querySelector(`.${bylineClass}`) || undefined;
   if (bylineElem !== undefined) {
