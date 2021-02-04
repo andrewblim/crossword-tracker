@@ -85,7 +85,6 @@ let record, observerData;
 // updates or logging
 if (layout !== null && layout !== undefined) {
   chrome.storage.sync.get(storageKey, (result) => {
-    // TODO: versioning check here, if stored result format needs an upgrade
     if (result[storageKey] !== undefined) {
       record = result[storageKey];
     } else {
@@ -94,15 +93,23 @@ if (layout !== null && layout !== undefined) {
     updateRecordMetadata();
     observerData = [];
     createObservers();
-    enableObservers();
+    if (currentlySolved()) {
+      chrome.runtime.sendMessage({ action: "setBadgeSolved" });
+    } else {
+      enableObservers();
+      chrome.runtime.sendMessage({ action: "setBadgeRecording" });
+    }
   });
 }
 
 // Update record with metadata from the DOM, capture initial
 // state if it is not already present
 const updateRecordMetadata = function () {
-  record.url = window.location.href;
+  // Version info not yet used, but reserved for the future in
+  // case we want to make breaking changes to the format.
+  record.version = "0.1";
 
+  record.url = window.location.href;
   const puzInfo = appWrapper.querySelector(`.${infoClass}`);
   const title = puzInfo?.querySelector(`.${titleClass}`)?.textContent;
   if (title !== undefined) { record.title = title; }
@@ -255,7 +262,14 @@ const recordEvent = function (type, info = {}) {
     });
   }
   if (successfulSubmit) {
-    // TODO: trigger save
+    // NOTE - once you've solved a puzzle, we won't keep logging anything.
+    // So if you clear the puzzle and start again, we won't log anything new
+    // unless you clear out the event log from storage manually. Seemed
+    // reasonable (instead of accidentally logging extra stuff), but maybe
+    // an option to toggle in the future, if people like clearing and
+    // restarting more than I realize they do
+    disableObservers();
+    chrome.runtime.sendMessage({ action: "setBadgeSolved" });
   }
 };
 
@@ -348,18 +362,28 @@ const cellCallback = function (mutationsList, _observer) {
 // was a stop event (or there have been no events yet at all)
 const currentlyStopped = function() {
   return (record.events.length == 0 ||
-          record.events[record.events.length - 1].type == "stop");
+          record.events[record.events.length - 1].type == "stop" ||
+          currentlySolved());
+}
+
+// We should be in a solved state if and only if the last event
+// was a successful submit event
+const currentlySolved = function() {
+  return (record.events.length > 0 &&
+          record.events[record.events.length - 1].type == "submit" &&
+          record.events[record.events.length - 1].success);
 }
 
 // if we navigate away/close tab, record a stop event if
 // we aren't already stopped, and write the record out
-window.onbeforeunload = function () {
+window.onbeforeunload = () => {
   if (!currentlyStopped()) { recordEvent("stop"); }
   chrome.runtime.sendMessage({
     action: "storeRecord",
     key: storageKey,
     record: record,
   });
+  chrome.runtime.sendMessage({ action: "clearBadge" });
 };
 
 // interaction with popup
@@ -390,6 +414,11 @@ chrome.runtime.onMessage.addListener(
       );
       record = {};
       updateRecordMetadata();
+      if (currentlySolved()) {
+        chrome.runtime.sendMessage({ action: "setBadgeSolved" });
+      } else {
+        chrome.runtime.sendMessage({ action: "setBadgeRecording" });
+      }
     } else if (request.action === "downloadRecord") {
       let defaultStub = window.location.pathname
         .replace(/^\/crosswords\/game\//, "")

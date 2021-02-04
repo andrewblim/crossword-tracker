@@ -49,6 +49,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.log(request);
       sendResponse({ success: false });
     }
+  } else if (request.action === "setBadgeRecording") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.action.setBadgeBackgroundColor({ tabId: tabs[0].id, color: "red" });
+      chrome.action.setBadgeText({ tabId: tabs[0].id, text: "REC" });
+    });
+  } else if (request.action === "setBadgeSolved") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.action.setBadgeBackgroundColor({ tabId: tabs[0].id, color: "green" });
+      chrome.action.setBadgeText({ tabId: tabs[0].id, text: "✓" });
+    });
+  } else if (request.action === "clearBadge") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.action.setBadgeText(tabs[0].id, null);
+    });
   } else {
     console.log(`Unrecognized request action ${request.action}. Full request:`);
     console.log(request);
