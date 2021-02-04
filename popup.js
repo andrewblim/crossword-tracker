@@ -64,7 +64,7 @@ document.getElementById("download-record").addEventListener("click", async () =>
               new Blob([JSON.stringify(record, null, 2)], { type: "application/json" })
             ),
             filename: defaultFilename,
-            saveAs: true
+            saveAs: true,
           });
           statusBar.textContent = "Record download successfully requested";
         } else {
