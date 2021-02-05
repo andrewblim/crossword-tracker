@@ -54,6 +54,9 @@ The following event types are recognized as having particular meaning:
   - `x`, `y`: (strings, mandatory) The (x,y) position of the updated square.
   - `fill`: (string, mandatory) The updated fill value of the square. Entering a letter would be represented by a length-1 string; a rebus entry would be a longer string; deleting an entry would be an empty string.
 - `submit`: The solver has submitted the puzzle. There will be an additional field `success` with a boolean value true/false if the puzzle was completely correct or not.
+- `select`: The solver is primarily focused on a particular square, meaning that this is the square they are focused on filling in. There will be additional fields `{x, y}` indicating the square. Only one square should be considered selected at a time; a subsequent `select` event necessarily implies that the previously selected square is deselected. A `select` event should also occur concurrently with a `highlight` event.
+- `highlight`: The solver is primarily or secondarily focused on a square, meaning that they are looking at a clue, and these squares are in that clue and are not already selected. There will be additional fields `{x, y}` indicating the square. Any number of squares may be highlighted at a given time, so unlike `select`, a square must be specifically `unhighlight`-ed to remove focus.
+- `unhighlight`: The solver is secondarily focused on a square, meaning that they are looking at a clue, and these squares are in that clue and are not already selected. There will be additional fields `{x, y}` indicating the square.
 
 ### Unrecognized event types / extra even attributes
 

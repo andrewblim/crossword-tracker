@@ -19,6 +19,8 @@ const veilClass = "Veil-veil--3oKaF";
 const cellClass = "Cell-cell--1p4gH";
 const blockClass = "Cell-block--1oNaD";
 const hiddenClass = "Cell-hidden--3xQI1";
+const selectedClass = "Cell-selected--2PAbF";
+const highlightedClass = "Cell-highlighted--2YbzJ";
 const revealedClass = "Shame-revealed--3jDzk";
 const checkedClass = "Shame-checked--3E9GW";
 const modifiedClass = "Shame-modified--2Mbw4";
@@ -197,6 +199,7 @@ const createObservers = function () {
           childList: true,
           subtree: true,
           characterData: true,
+          attributeOldValue: true,
           attributeFilter: ["class"],
         },
       });
@@ -298,16 +301,16 @@ const cellCallback = function (mutationsList, _observer) {
     return;
   }
 
-  let x, y, fill;
-  let reveal = false, check = false;
+  let eventType, eventData;
   for (const mutation of mutationsList) {
     if (mutation.type == "characterData") {
       // ignore changes in the "hidden" elements
       if (mutation.target.parentElement.classList.contains(hiddenClass)) {
         continue;
       }
-      fill = mutation.target.data;
-      ({ x, y } = getXYForCellSibling(mutation.target.parentElement));
+      eventType = "update";
+      eventData = getXYForCellSibling(mutation.target);
+      eventData.fill = mutation.target.data;
     }
     else if (mutation.type == "childList") {
       // ignore changes in the "hidden" elements
@@ -316,12 +319,12 @@ const cellCallback = function (mutationsList, _observer) {
       }
       for (const addition of mutation.addedNodes) {
         if (addition.classList.contains(revealedClass)) {
-          reveal = true;
-          ({ x, y } = getXYForCellSibling(addition));
+          eventType = "reveal";
+          eventData = getXYForCellSibling(addition);
           break;
         } else if (addition.classList.contains(checkedClass)) {
-          check = true;
-          ({ x, y } = getXYForCellSibling(addition));
+          eventType = "check";
+          eventData = getXYForCellSibling(addition);
           break;
         }
         // ignore addition of other nodes, such as the <use> element
@@ -331,30 +334,38 @@ const cellCallback = function (mutationsList, _observer) {
       // which can happen if you have <use> elements but then you
       // reset the puzzle
     }
-    else if (mutation.type == "attributes" && mutation.target.nodeName === "use") {
+    else if (mutation.type === "attributes" && mutation.target.nodeName === "use") {
       // ignore anything other than modifications to the <use> object
       // that appears and persists once you check/reveal
       if (mutation.target.classList.contains(revealedClass)) {
-        reveal = true;
-        ({ x, y } = getXYForCellSibling(mutation.target));
+        eventType = "reveal";
+        eventData = getXYForCellSibling(mutation.target);
         break;
       } else if (mutation.target.classList.contains(checkedClass)) {
-        check = true;
-        ({ x, y } = getXYForCellSibling(mutation.target));
+        eventType = "check";
+        eventData = getXYForCellSibling(mutation.target);
         break;
+      }
+    } else if (mutation.type === "attributes" && mutation.target.nodeName === "rect") {
+      if (mutation.target.classList.contains(selectedClass)) {
+        eventType = "select";
+        eventData = getXYForCellSibling(mutation.target);
+      } else if (mutation.target.classList.contains(highlightedClass) &&
+                 (mutation.attributeOldValue === undefined ||
+                 !mutation.attributeOldValue.split(" ").contains(highlightedClass))) {
+        eventType = "highlight";
+        eventData = getXYForCellSibling(mutation.target);
+      } else if (!mutation.target.classList.contains(highlightedClass) &&
+                 (mutation.attributeOldValue &&
+                  mutation.attributeOldValue.split(" ").contains(highlightedClass))) {
+        eventType = "unhighlight";
+        eventData = getXYForCellSibling(mutation.target);
       }
     }
   }
 
-  // nothing to trigger unless we've found an (x,y) to update
-  if (x !== undefined && y !== undefined) {
-    if (reveal) {
-      recordEvent("reveal", { x, y, fill });
-    } else if (check) {
-      recordEvent("check", { x, y });
-    } else {
-      recordEvent("update", { x, y, fill });
-    }
+  if (eventType !== undefined && eventData !== undefined) {
+    recordEvent(eventType, eventData);
   }
 };
 
