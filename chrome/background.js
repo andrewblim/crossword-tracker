@@ -11,7 +11,7 @@ chrome.runtime.onInstalled.addListener(() => {
         },
         results,
       )
-      chrome.storage.sync.set(results);
+      chrome.storage.sync.set(update);
     },
   );
 });
