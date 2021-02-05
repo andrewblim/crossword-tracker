@@ -9,8 +9,18 @@
     </p>
     <h2>General options</h2>
     <div>
-      <label for="solver-name">Your name</label>
-      <input type="text" id="solver-name"></input>
+      <div>
+        <label for="solver-name">Your name</label>
+        <input type="text" id="solver-name"></input>
+      </div>
+      <div>
+        <label for="event-log-level">Log level</label>
+        <select id="event-log-level">
+          <option value="basic">Game and fill only</option>
+          <option value="selection">Game, fill, square selection</option>
+          <option value="full">Game, fill, square selection/highlight</option>
+        </select>
+      </div>
     </div>
     <button id="save-general">Save</button>
     <h2>Record management</h2>

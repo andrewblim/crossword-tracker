@@ -32,10 +32,14 @@ const storageKey = `record-${window.location.href}`;
 
 // Variables for user-configurable options
 
-let eventFlushFrequency;
-chrome.storage.sync.get("eventFlushFrequency", (result) => {
-  eventFlushFrequency = result.eventFlushFrequency;
-});
+let eventFlushFrequency, eventLogLevel;
+chrome.storage.sync.get(
+  ["eventFlushFrequency", "eventLogLevel"],
+  (result) => {
+    eventLogLevel = result.eventLogLevel;
+    eventFlushFrequency = result.eventFlushFrequency;
+  }
+);
 
 // important basic elements we expect to find in the DOM
 const appWrapper = document.querySelector(`div.${appWrapperClass}`);
@@ -246,12 +250,8 @@ const captureBoardState = function () {
   return boardState;
 };
 
-const recordEvent = function (type, info = {}) {
-  record.events.push({
-    type: type,
-    timestamp: new Date().getTime(),
-    ...info
-  });
+const recordEvent = function (type, timestamp, info = {}) {
+  record.events.push({ type, timestamp, ...info });
   let successfulSubmit = type === "submit" && info.success;
   let timeToRecord;
   if (eventFlushFrequency) {
@@ -287,9 +287,9 @@ const startStopCallback = function (mutationsList, _observer) {
     }
   }
   if (start) {
-    recordEvent("start");
+    recordEvent("start", new Date().getTime());
   } else if (stop) {
-    recordEvent("stop");
+    recordEvent("stop", new Date().getTime());
   }
 };
 
@@ -301,16 +301,19 @@ const cellCallback = function (mutationsList, _observer) {
     return;
   }
 
-  let eventType, eventData;
+  // record timestamp now, to ensure that if we record multiple events
+  // on this callback, they are recorded with the same timestamp
+  let timestamp = new Date().getTime();
+
   for (const mutation of mutationsList) {
     if (mutation.type == "characterData") {
       // ignore changes in the "hidden" elements
       if (mutation.target.parentElement.classList.contains(hiddenClass)) {
         continue;
       }
-      eventType = "update";
-      eventData = getXYForCellSibling(mutation.target);
+      let eventData = getXYForCellSibling(mutation.target);
       eventData.fill = mutation.target.data;
+      recordEvent("update", timestamp, getXYForCellSibling(mutation.target));
     }
     else if (mutation.type == "childList") {
       // ignore changes in the "hidden" elements
@@ -319,12 +322,10 @@ const cellCallback = function (mutationsList, _observer) {
       }
       for (const addition of mutation.addedNodes) {
         if (addition.classList.contains(revealedClass)) {
-          eventType = "reveal";
-          eventData = getXYForCellSibling(addition);
+          recordEvent("reveal", timestamp, getXYForCellSibling(addition));
           break;
         } else if (addition.classList.contains(checkedClass)) {
-          eventType = "check";
-          eventData = getXYForCellSibling(addition);
+          recordEvent("check", timestamp, getXYForCellSibling(addition));
           break;
         }
         // ignore addition of other nodes, such as the <use> element
@@ -338,34 +339,29 @@ const cellCallback = function (mutationsList, _observer) {
       // ignore anything other than modifications to the <use> object
       // that appears and persists once you check/reveal
       if (mutation.target.classList.contains(revealedClass)) {
-        eventType = "reveal";
-        eventData = getXYForCellSibling(mutation.target);
+        recordEvent("reveal", timestamp, getXYForCellSibling(mutation.target));
         break;
       } else if (mutation.target.classList.contains(checkedClass)) {
-        eventType = "check";
-        eventData = getXYForCellSibling(mutation.target);
+        recordEvent("check", timestamp, getXYForCellSibling(mutation.target));
         break;
       }
     } else if (mutation.type === "attributes" && mutation.target.nodeName === "rect") {
-      if (mutation.target.classList.contains(selectedClass)) {
-        eventType = "select";
-        eventData = getXYForCellSibling(mutation.target);
-      } else if (mutation.target.classList.contains(highlightedClass) &&
-                 (mutation.attributeOldValue === undefined ||
-                 !mutation.attributeOldValue.split(" ").contains(highlightedClass))) {
-        eventType = "highlight";
-        eventData = getXYForCellSibling(mutation.target);
-      } else if (!mutation.target.classList.contains(highlightedClass) &&
-                 (mutation.attributeOldValue &&
-                  mutation.attributeOldValue.split(" ").contains(highlightedClass))) {
-        eventType = "unhighlight";
-        eventData = getXYForCellSibling(mutation.target);
+      // selection/highlight logging
+      // this can generate multiple events (i.e. both a selection and a highlight)
+      if ((eventLogLevel === "selection" || eventLogLevel === "full") &&
+          mutation.target.classList.contains(selectedClass)) {
+        recordEvent("select", timestamp, getXYForCellSibling(mutation.target));
+      }
+      if (eventLogLevel === "full" &&
+          mutation.target.classList.contains(highlightedClass) &&
+          (mutation.oldValue === undefined || !mutation.oldValue.split(" ").includes(highlightedClass))) {
+        recordEvent("highlight", timestamp, getXYForCellSibling(mutation.target));
+      } else if (eventLogLevel === "full" &&
+                 !mutation.target.classList.contains(highlightedClass) &&
+                 (mutation.oldValue && mutation.oldValue.split(" ").includes(highlightedClass))) {
+        recordEvent("unhighlight", timestamp, getXYForCellSibling(mutation.target));
       }
     }
-  }
-
-  if (eventType !== undefined && eventData !== undefined) {
-    recordEvent(eventType, eventData);
   }
 };
 

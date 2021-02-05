@@ -1,12 +1,25 @@
 const solvingAs = document.getElementById("solving-as");
+const eventLogLevel = document.getElementById("event-log-level");
 const statusBar = document.getElementById("status-bar");
 
-chrome.storage.sync.get("solverName", ({ solverName }) => {
-  if (solverName && solverName !== "") {
-    solvingAs.textContent = `Solving as: ${solverName}`;
-  } else {
-    solvingAs.textContent = "Anonymous solver (set name in preferences)";
-  }
+chrome.storage.sync.get(
+  ["solverName", "eventLogLevel"],
+  (result) => {
+    if (result.solverName && result.solverName !== "") {
+      solvingAs.textContent = `Solving as: ${result.solverName}`;
+    } else {
+      solvingAs.textContent = "Anonymous solver (set name in preferences)";
+    }
+    switch (result.eventLogLevel) {
+      case "full":
+        eventLogLevel.textContent = "Logging full events";
+        break;
+      case "selection":
+        eventLogLevel.textContent = "Logging basic events + square selection";
+        break;
+      default:
+        eventLogLevel.textContent = "Logging basic events only";
+    }
 });
 
 document.getElementById("preferences-link").addEventListener("click", async () => {

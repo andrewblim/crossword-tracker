@@ -2,12 +2,13 @@
 // See options page for all preferences.
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.sync.get(
-    ["solverName", "eventFlushFrequency"],
+    ["solverName", "eventFlushFrequency", "eventLogLevel"],
     (results) => {
       const update = Object.assign(
         {
           "solverName": "",
           "eventFlushFrequency": 20,
+          "eventLogLevel": "selection",
         },
         results,
       )
