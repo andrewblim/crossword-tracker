@@ -1,35 +1,58 @@
-const solvingAs = document.getElementById("solving-as");
-const eventLogLevel = document.getElementById("event-log-level");
-const statusBar = document.getElementById("status-bar");
+"use strict";
 
+import {
+  downloadRecord,
+} from "./common.js";
+
+// Minor amounts of current user settings displayed at top
 chrome.storage.sync.get(
   ["solverName", "eventLogLevel"],
-  (result) => {
-    if (result.solverName && result.solverName !== "") {
-      solvingAs.textContent = `Solving as: ${result.solverName}`;
+  ({ solverName, eventLogLevel }) => {
+    const solvingAsElem = document.getElementById("solving-as");
+    if (solverName && solverName !== "") {
+      solvingAsElem.textContent = `Solving as: ${solverName}`;
     } else {
-      solvingAs.textContent = "Anonymous solver (set name in preferences)";
+      solvingAsElem.textContent = "Anonymous solver (set name in preferences)";
     }
-    switch (result.eventLogLevel) {
+    const eventLogLevelElem = document.getElementById("event-log-level");
+    switch (eventLogLevel) {
       case "full":
-        eventLogLevel.textContent = "Logging full events";
+        eventLogLevelElem.textContent = "Logging full events";
         break;
       case "selection":
-        eventLogLevel.textContent = "Logging basic events + square selection";
+        eventLogLevelElem.textContent = "Logging basic events + square selection";
         break;
       default:
-        eventLogLevel.textContent = "Logging basic events only";
+        eventLogLevelElem.textContent = "Logging basic events only";
     }
 });
+
+const updateStatusBar = (message) => {
+  document.getElementById("status-bar").textContent = message;
+}
 
 document.getElementById("preferences-link").addEventListener("click", async () => {
   chrome.runtime.openOptionsPage();
 })
 
+// Popup interactions with active tab
+// In general, these all take the form of sending a message to the current tab,
+// and then expecting a response with a "success" true/false field, based on
+// which it updates the status bar.
+
 document.getElementById("log-record").addEventListener("click", async () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, { action: "logRecord" });
-    statusBar.textContent = "Logged record to console";
+    chrome.tabs.sendMessage(
+      tabs[0].id,
+      { action: "logRecord" },
+      ({ success }) => {
+        if (success) {
+          updateStatusBar("Logged record to console");
+        } else {
+          updateStatusBar("Failed to log record to console");
+        }
+      },
+    );
   });
 });
 
@@ -40,9 +63,9 @@ document.getElementById("store-record").addEventListener("click", async () => {
       { action: "storeRecord" },
       ({ success }) => {
         if (success) {
-          statusBar.textContent = "Stored record to browser storage";
+          updateStatusBar("Stored record to browser storage");
         } else {
-          statusBar.textContent = "Failed to store record to browser storage";
+          updateStatusBar("Failed to store record to browser storage");
         }
       },
     );
@@ -56,9 +79,9 @@ document.getElementById("clear-record").addEventListener("click", async () => {
       { action: "clearRecord" },
       ({ success }) => {
         if (success) {
-          statusBar.textContent = "Cleared record from browser storage";
+          updateStatusBar("Cleared record from browser storage");
         } else {
-          statusBar.textContent = "Failed to clear record from browser storage";
+          updateStatusBar("Failed to clear record from browser storage");
         }
       },
     );
@@ -71,17 +94,11 @@ document.getElementById("download-record").addEventListener("click", async () =>
       tabs[0].id,
       { action: "downloadRecord" },
       ({ success, record, defaultFilename }) => {
-        if (success && record) {
-          chrome.downloads.download({
-            url: URL.createObjectURL(
-              new Blob([JSON.stringify(record, null, 2)], { type: "application/json" })
-            ),
-            filename: defaultFilename,
-            saveAs: true,
-          });
-          statusBar.textContent = "Record download successfully requested";
+        if (success) {
+          downloadRecord(record, { filename: defaultFilename });
+          updateStatusBar("Record download successfully requested");
         } else {
-          statusBar.textContent = "Unable to download record";
+          updateStatusBar("Unable to download record");
         }
       },
     );

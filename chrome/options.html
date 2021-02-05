@@ -10,23 +10,30 @@
     <h2>General options</h2>
     <div>
       <div>
-        <label for="solver-name">Your name</label>
-        <input type="text" id="solver-name"></input>
+        <label for="solverName">Your name</label>
+        <input type="text" id="solverName"></input>
       </div>
       <div>
-        <label for="event-log-level">Log level</label>
-        <select id="event-log-level">
+        <label for="eventLogLevel">Log level</label>
+        <select id="eventLogLevel">
           <option value="basic">Game and fill only</option>
           <option value="selection">Game, fill, square selection</option>
           <option value="full">Game, fill, square selection/highlight</option>
         </select>
       </div>
       <div>
-        <label for="log-user-agent">Log user agent</label>
-        <input type="checkbox" id="log-user-agent"></input>
+        <label for="logUserAgent">Log user agent</label>
+        <input type="checkbox" id="logUserAgent"></input>
       </div>
     </div>
     <button id="save-general">Save</button>
+    <h2>Site-specific settings</h2>
+    <h3>New York Times</h3>
+    <div>
+      <label for="nyt-eventFlushFrequency">Event flush frequency</label>
+      <input type="text" id="nyt-eventFlushFrequency"></input>
+    </div>
+    <button id="save-nyt">Save</button>
     <h2>Record management</h2>
     <table>
       <thead>
@@ -38,15 +45,6 @@
       </tbody>
     </table>
     <button id="delete-all-records">Delete all records</button>
-    <h2>Developer settings</h2>
-    <div>
-      Settings you probably only want to tinker with if you're developing
-    </div>
-    <div>
-      <label for="event-flush-frequency">Event flush frequency</label>
-      <input type="text" id="event-flush-frequency"></input>
-    </div>
-    <button id="save-dev">Save</button>
   </body>
-  <script src="options.js"></script>
+  <script type="module" src="options.js"></script>
 </html>
