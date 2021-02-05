@@ -190,7 +190,7 @@ const createObservers = function () {
   observerData.push({
     observer: new MutationObserver((mutationsList, _observer) => {
       if (mutationsList.find(x => x.target.querySelector(`.${congratsClass}`))) {
-        recordEvent("submit", { success: true });
+        recordEvent("submit", new Date().getTime(), { success: true });
       }
     }),
     target: appWrapper,
@@ -320,7 +320,7 @@ const cellCallback = function (mutationsList, _observer) {
       }
       let eventData = getXYForCellSibling(mutation.target);
       eventData.fill = mutation.target.data;
-      recordEvent("update", timestamp, getXYForCellSibling(mutation.target));
+      recordEvent("update", timestamp, eventData);
     }
     else if (mutation.type == "childList") {
       // ignore changes in the "hidden" elements
