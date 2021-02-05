@@ -1,13 +1,15 @@
 const solverNameInput = document.getElementById("solver-name");
 const eventFlushFrequencyInput = document.getElementById("event-flush-frequency");
 const eventLogLevelSelect = document.getElementById("event-log-level");
+const logUserAgentInput = document.getElementById("log-user-agent");
 
 chrome.storage.sync.get(
-  ["solverName", "eventFlushFrequency", "eventLogLevel"],
+  ["solverName", "eventFlushFrequency", "eventLogLevel", "logUserAgent"],
   (result) => {
     solverNameInput.value = result.solverName || "";
     eventFlushFrequencyInput.value = result.eventFlushFrequency || "";
     eventLogLevelSelect.value = result.eventLogLevel || "basic";
+    logUserAgentInput.checked = result.logUserAgent || false;
   },
 );
 
@@ -150,6 +152,7 @@ const saveGeneral = async (callback) => {
     {
       solverName: solverNameInput.value,
       eventLogLevel: eventLogLevelSelect.value,
+      logUserAgent: logUserAgentInput.checked,
     },
     callback,
   );

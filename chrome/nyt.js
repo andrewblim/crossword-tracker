@@ -129,10 +129,17 @@ const updateRecordMetadata = function () {
       .join(" - ");
   }
 
-  chrome.storage.sync.get("solverName", ({ solverName }) => {
-    record.solverName = solverName;
-    return true;
-  })
+  chrome.storage.sync.get(
+    ["solverName", "logUserAgent"],
+    (result) => {
+      record.solverName = result.solverName;
+      if (result.logUserAgent) {
+        record.userAgent = navigator.userAgent;
+      } else
+      // actively delete it if it exists on the record
+      delete record.userAgent;
+    }
+  );
 
   record.clueSections = {};
   for (clueListWrapperElem of layout.querySelectorAll(`.${clueListWrapperClass}`)) {

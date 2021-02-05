@@ -14,9 +14,9 @@ The crossword log file consists of a JSON object with the keys described below. 
 
 **Optional.** These are the title, byline, and publication date of the puzzle, respectively. If present, each of these maps to a string. There are no other restrictions; for example, the `date` field can be in any format at all, or could technically even be something other than a date, although obviously it's advised to use these for their indicated purposes.
 
-## `solver`
+## `solver`, `userAgent`
 
-**Optional.** This is the name of the person who generated this log file. If present, it maps to a string.
+**Optional.** The `solver` is the name of the person who generated this log file. If present, it maps to a string. The `userAgent` is the browser's [user agent](https://developer.mozilla.org/en-US/docs/Web/API/NavigatorID/userAgent) string - this may be handy for denoting what kind of interface was used for solving (operating system, computer vs. mobile).
 
 ## `clueSections`
 
