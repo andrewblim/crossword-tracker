@@ -138,7 +138,7 @@ const updateRecordMetadata = function () {
       sectionClues = Array.from(listElem.children)
         .filter(elem => elem.nodeName === "LI" && elem.classList.contains(clueClass))
         .map((clueElem) => {
-          let clueLabel = null, clueText = null;
+          let clueLabel = "", clueText = "";
           for (clueSubElem of clueElem.children) {
             if (clueSubElem.classList.contains(clueLabelClass)) {
               clueLabel = clueSubElem.textContent;
