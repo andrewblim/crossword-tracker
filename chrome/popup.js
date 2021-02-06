@@ -17,7 +17,7 @@ chrome.storage.sync.get(
     const eventLogLevelElem = document.getElementById("event-log-level");
     switch (eventLogLevel) {
       case "full":
-        eventLogLevelElem.textContent = "Logging full events";
+        eventLogLevelElem.textContent = "Logging basic events + full navigation";
         break;
       case "selection":
         eventLogLevelElem.textContent = "Logging basic events + square selection";
