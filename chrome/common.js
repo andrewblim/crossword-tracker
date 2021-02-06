@@ -1,6 +1,6 @@
 "use strict";
 
-export const userSettings = {
+const userSettings = {
   solverName: {
     default: "",
     description: "Solver's name",
@@ -21,7 +21,7 @@ export const userSettings = {
   }
 };
 
-export const siteSpecificSettings = {
+const siteSpecificSettings = {
   nyt: {
     eventFlushFrequency: {
       default: 30,
@@ -31,7 +31,7 @@ export const siteSpecificSettings = {
   },
 };
 
-export const downloadRecord = (record, opts = {}) => {
+const downloadRecord = (record, opts = {}) => {
   chrome.downloads.download({
     url: URL.createObjectURL(
       new Blob([JSON.stringify(record, null, 2)], { type: "application/json" })
@@ -41,7 +41,7 @@ export const downloadRecord = (record, opts = {}) => {
   });
 };
 
-export const humanizedRecordName = function(record) {
+const humanizedRecordName = function(record) {
   let name = [];
   if (record.title && record.title !== "") {
     name.push(record.title);
@@ -57,7 +57,7 @@ export const humanizedRecordName = function(record) {
   return name.join(" - ");
 }
 
-export const suggestedRecordFilename = function(record) {
+const suggestedRecordFilename = function(record) {
   let url = new URL(record.url);
   if (url.hostname == "www.nytimes.com") {
     let stub = url.pathname.replace(/^\/crosswords\/game\//, "").replace(/\//g, "-");
@@ -66,4 +66,20 @@ export const suggestedRecordFilename = function(record) {
     let stub = url.pathname.replace(/\//g, "-");
     return `${stub}.json`;
   }
+}
+
+// Detect if we're in a "stopped" state. Useful to ensure that we don't record
+// any events so long as we are in this state.
+const currentlyStopped = function(record) {
+  return (record.events.length == 0 ||
+          record.events[record.events.length - 1].type == "stop" ||
+          currentlySolved(record));
+}
+
+// Detect if we're in a "solved" state. Useful to ensure that we don't record
+// any events so long as we are in this state, and to control badges.
+const currentlySolved = function(record) {
+  return (record.events.length > 0 &&
+          record.events[record.events.length - 1].type == "submit" &&
+          record.events[record.events.length - 1].success);
 }

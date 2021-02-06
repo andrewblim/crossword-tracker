@@ -1,9 +1,5 @@
 "use strict";
 
-import {
-  downloadRecord,
-} from "./common.js";
-
 // Minor amounts of current user settings displayed at top
 chrome.storage.sync.get(
   ["solverName", "eventLogLevel"],
@@ -27,10 +23,6 @@ chrome.storage.sync.get(
     }
 });
 
-const updateStatusBar = (message) => {
-  document.getElementById("status-bar").textContent = message;
-}
-
 document.getElementById("preferences-link").addEventListener("click", async () => {
   chrome.runtime.openOptionsPage();
 })
@@ -39,6 +31,10 @@ document.getElementById("preferences-link").addEventListener("click", async () =
 // In general, these all take the form of sending a message to the current tab,
 // and then expecting a response with a "success" true/false field, based on
 // which it updates the status bar.
+
+const updateStatusBar = (message) => {
+  document.getElementById("status-bar").textContent = message;
+}
 
 document.getElementById("log-record").addEventListener("click", async () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {

@@ -1,14 +1,7 @@
 "use strict";
 
-import {
-  downloadRecord,
-  humanizedRecordName,
-  suggestedRecordFilename,
-} from "./common.js";
-
 // Functions to populate and save settings
 
-// load user settings based on stored values
 chrome.storage.sync.get(
   ["solverName", "eventLogLevel", "logUserAgent"],
   ({ solverName, eventLogLevel, logUserAgent }) => {
@@ -18,7 +11,6 @@ chrome.storage.sync.get(
   },
 );
 
-// load site-specific settings based on stored values
 chrome.storage.sync.get(
   ["nytSettings"],
   ({ nytSettings }) => {
@@ -70,7 +62,7 @@ document.getElementById("save-nyt").addEventListener("click", () => {
   });
 });
 
-// Functions for building and updating rows in the table of records
+// Build and update rows in the table of records
 
 const buildRow = (rowId, record) => {
   let row = document.createElement("tr");

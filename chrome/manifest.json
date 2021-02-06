@@ -4,13 +4,12 @@
   "version": "0.1",
   "manifest_version": 3,
   "background": {
-    "service_worker": "background.js",
-    "page": "background.html"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": ["https://www.nytimes.com/crosswords/game/*"],
-      "js": ["nyt.js"]
+      "js": ["common.js", "nyt.js"]
     }
   ],
   "permissions": ["storage", "scripting", "downloads"],

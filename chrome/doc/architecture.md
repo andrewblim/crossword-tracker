@@ -1,6 +1,5 @@
 # Architecture
-
-## Basic logging
+## Basic logging (content scripts)
 
 When visiting a supported crossword page, the extension loads a corresponding content script, as defined by the manifest. For example: visting a New York Times crossword page loads `nyt.js`.
 
@@ -26,3 +25,12 @@ In the case of downloading the record as a JSON file, the tab will (synchronousl
 ## Preferences
 
 TODO
+
+## Common functionality
+
+The script `common.js` contains functionality that is common to all other scripts: the content scripts and the scripts associated with the popup and options page. It should be "included" as follows:
+
+- Content scripts: in the manifest, `common.js` should be listed before any site-specific content scripts.
+- Other scripts: in the associated page, a tag `<script src="common.js"></script>` should precede any `<script src="some_other_script_file.js"></script>`.
+
+`common.js` is not a module. Unfortunately I have not found a way to get it to work as a module with content scripts. The "inclusion" is simply the fact that it gets run first before the other scripts.

@@ -1,16 +1,16 @@
+"use strict";
+
 // magic constants (from NYT's crossword CSS/HTML)
 
-const appWrapperClass = "app-appWrapper--2PSLL";
+const puzzleClass = "app-appWrapper--2PSLL";
 const layoutClass = "Layout-unveilable--3OmrG";
 
-const infoClass = "PuzzleDetails-details--1WqAl";
 const titleClass = "PuzzleDetails-title--iv1IG";
 const dateClass = "PuzzleDetails-date--1HNzj";
 const bylineClass = "PuzzleDetails-byline--16J5w";
 
 const clueListWrapperClass = "ClueList-wrapper--3m-kd";
 const clueListTitleClass = "ClueList-title--1-3oW";
-const clueListClass = "ClueList-list--2dD5-";
 const clueClass = "Clue-li--1JoPu";
 const clueLabelClass = "Clue-label--2IdMY";
 const clueTextClass = "Clue-text--3lZl7";
@@ -23,7 +23,6 @@ const selectedClass = "Cell-selected--2PAbF";
 const highlightedClass = "Cell-highlighted--2YbzJ";
 const revealedClass = "Shame-revealed--3jDzk";
 const checkedClass = "Shame-checked--3E9GW";
-const modifiedClass = "Shame-modified--2Mbw4";
 const congratsClass = "CongratsModal-congratsModalContent--19hpv";
 
 // other constants, not user-configurable
@@ -34,41 +33,35 @@ const storageKey = `record-${window.location.href}`;
 
 let eventFlushFrequency, eventLogLevel;
 chrome.storage.sync.get(
-  ["eventFlushFrequency", "eventLogLevel"],
+  ["eventLogLevel", "nytSettings"],
   (result) => {
-    eventLogLevel = result.eventLogLevel;
-    eventFlushFrequency = result.eventFlushFrequency;
+    // TODO: reference centralized defaults
+    eventLogLevel = result.eventLogLevel || "basic";
+    eventFlushFrequency = result.nytSettings?.eventFlushFrequency || 9999;
   }
 );
 
-// important basic elements we expect to find in the DOM
-const appWrapper = document.querySelector(`div.${appWrapperClass}`);
-const layout = appWrapper?.querySelector(`div.${layoutClass}`);
-
-// get cell size - assumes there's at least 1 cell and that all cells
-// are the same size
-let xSize, ySize, xOffset, yOffset;
+const puzzle = document.querySelector(`div.${puzzleClass}`);
+const layout = puzzle?.querySelector(`div.${layoutClass}`);
 const firstCell = document.getElementById("cell-id-0");
-if (firstCell !== null) {
-  xOffset = firstCell.getAttribute("x");
-  yOffset = firstCell.getAttribute("y");
-  xSize = firstCell.getAttribute("width");
-  ySize = firstCell.getAttribute("height");
-}
+const xSize = firstCell?.width;
+const ySize = firstCell?.height;
+const xOffset = firstCell?.x;
+const yOffset = firstCell?.y;
 
-// given a <rect>, get its (x,y)
+// given a "cell-id-" element, get its (x,y)
 const getXYForCell = function(rectElem) {
   return {
-    x: (rectElem.getAttribute("x") - xOffset) / xSize,
-    y: (rectElem.getAttribute("y") - yOffset) / ySize
+    x: (rectElem.x - xOffset) / xSize,
+    y: (rectElem.y - yOffset) / ySize,
   };
 }
 
-// given a sibling element to a <rect>, get its (x,y)
+// given a sibling element to a "cell-id-" element, get its (x,y)
 const getXYForCellSibling = function(siblingElem) {
-  for (const elem of siblingElem.parentElement.children) {
-    if (elem.nodeName === "rect") { return getXYForCell(elem); }
-  }
+  const cell = Array(siblingElem.parentElement.children)
+    .find(elem => elem.id?.startsWith("cell-id-"));
+  if (cell) { return getXYForCell(elem); }
   return { x: null, y: null };
 }
 
@@ -85,96 +78,64 @@ const forEachCell = function (f) {
 
 let record, observerData;
 
-// If for whatever reason we can't find the puzzle layout,
-// nothing happens at all - record and observerData should
-// remain undefined, and there will be no observation of
-// updates or logging
-if (layout !== null && layout !== undefined) {
-  chrome.storage.sync.get(storageKey, (result) => {
-    if (result[storageKey] !== undefined) {
-      record = result[storageKey];
-    } else {
-      record = {}
-    }
-    updateRecordMetadata();
-    observerData = [];
-    createObservers();
-    if (currentlySolved()) {
-      chrome.runtime.sendMessage({ action: "setBadgeSolved" });
-    } else {
-      enableObservers();
-      chrome.runtime.sendMessage({ action: "setBadgeRecording" });
-    }
-  });
-}
+// Update record with metadata from the DOM and from supplied user info
 
-// Update record with metadata from the DOM, capture initial
-// state if it is not already present
-const updateRecordMetadata = function () {
-  // Version info not yet used, but reserved for the future in
-  // case we want to make breaking changes to the format.
+const updateRecordMetadata = function (record, userInfo, puzzle) {
+  // Version info not yet used, but reserved for the future, in case we want to
+  // make breaking changes to the format.
   record.version = "0.1";
 
   record.url = window.location.href;
-  const puzInfo = appWrapper.querySelector(`.${infoClass}`);
-  const title = puzInfo?.querySelector(`.${titleClass}`)?.textContent;
-  if (title !== undefined) { record.title = title; }
-  const date = puzInfo?.querySelector(`.${dateClass}`)?.textContent;
-  if (date !== undefined) { record.date = date; }
-  // byline info is in one or more sub-spans
-  const bylineElem = puzInfo?.querySelector(`.${bylineClass}`) || undefined;
-  if (bylineElem !== undefined) {
+  if (puzzle) {
+    const title = puzzle.querySelector(`.${titleClass}`)?.textContent;
+    if (title !== undefined) { record.title = title; }
+    const date = puzzle.querySelector(`.${dateClass}`)?.textContent;
+    if (date !== undefined) { record.date = date; }
+    // byline info is in one or more sub-spans
+    const bylineElem = puzzle.querySelector(`.${bylineClass}`);
+    if (bylineElem) {
     record.byline = Array.from(bylineElem.children)
       .map(x => x.textContent)
       .join(" - ");
+    }
   }
 
-  chrome.storage.sync.get(
-    ["solverName", "logUserAgent"],
-    (result) => {
-      record.solverName = result.solverName;
-      if (result.logUserAgent) {
-        record.userAgent = navigator.userAgent;
-      } else
-      // actively delete it if it exists on the record
-      delete record.userAgent;
-    }
-  );
+  // Actively remove solverName and userAgent if not supplied in userInfo but
+  // present in the supplied record
+  if (userInfo.solverName) {
+    record.solverName = userInfo.solverName;
+  } else {
+    delete record.solverName;
+  }
+  if (userInfo.userAgent) {
+    record.userAgent = userInfo.userAgent;
+  } else {
+    delete record.userAgent;
+  }
 
   record.clueSections = {};
-  for (clueListWrapperElem of layout.querySelectorAll(`.${clueListWrapperClass}`)) {
-    const titleElem = clueListWrapperElem.querySelector(`.${clueListTitleClass}`);
-    const title = titleElem?.textContent || "";
-    const listElem = clueListWrapperElem.querySelector(`.${clueListClass}`);
-    let sectionClues = [];
-    if (listElem !== null) {
-      sectionClues = Array.from(listElem.children)
-        .filter(elem => elem.nodeName === "LI" && elem.classList.contains(clueClass))
-        .map((clueElem) => {
-          let clueLabel = "", clueText = "";
-          for (clueSubElem of clueElem.children) {
-            if (clueSubElem.classList.contains(clueLabelClass)) {
-              clueLabel = clueSubElem.textContent;
-            } else if (clueSubElem.classList.contains(clueTextClass)) {
-              clueText = clueSubElem.textContent;
-            }
-          }
-          return { label: clueLabel, text: clueText };
-        });
-    }
-    record.clueSections[title] = sectionClues;
+  for (const wrapperElem of puzzle.querySelectorAll(`.${clueListWrapperClass}`)) {
+    const title = wrapperElem.querySelector(`.${clueListTitleClass}`)?.textContent || "";
+    const clueElems = wrapperElem.querySelectorAll(`.${clueClass}`);
+    record.clueSections[title] = Array.from(clueElems)
+      .filter(elem => elem.nodeName === "LI" && elem.classList.contains(clueClass))
+      .map((clueElem) => {
+        let children = Array.from(clueElem.children);
+        let clueLabel = children.find(x => x.classList.contains(clueLabelClass))?.textContent || "";
+        let clueText = children.find(x => x.classList.contains(clueTextClass))?.textContent || "";
+        return { label: clueLabel, text: clueText };
+      });
   }
 
-  // for initialState/events we defer to existing values
-  if (record.initialState === undefined) {
-    record.initialState = captureBoardState();
-  }
-  if (record.events === undefined) {
-    record.events = [];
-  }
+  // For initialState/events, defer to existing values in the record, but add
+  // them if they do not exist
+  if (!record.initialState) { record.initialState = captureBoardState(); }
+  if (!record.events) { record.events = []; }
 }
 
 const createObservers = function () {
+  let observerData = [];
+
   // Observe the layout to detect whether a start/stop event
   // has occurred (addition of a "veil" element). Only needs
   // to observe childList.
@@ -184,7 +145,7 @@ const createObservers = function () {
     options: { childList: true },
   });
 
-  // Observe app wrapper, to detect the congrats modal, which
+  // Observe puzzle, to detect the congrats modal, which
   // we treat as a successful submit. Only needs to observe
   // childList.
   observerData.push({
@@ -193,7 +154,7 @@ const createObservers = function () {
         recordEvent("submit", new Date().getTime(), { success: true });
       }
     }),
-    target: appWrapper,
+    target: puzzle,
     options: { childList: true },
   });
 
@@ -216,6 +177,8 @@ const createObservers = function () {
       });
     }
   });
+
+  return observerData;
 }
 
 const enableObservers = function() {
@@ -230,9 +193,19 @@ const disableObservers = function() {
   }
 }
 
+const updateBadgeAndObservers = function(record) {
+  if (currentlySolved(record)) {
+    disableObservers();
+    chrome.runtime.sendMessage({ action: "setBadgeSolved" });
+  } else {
+    enableObservers();
+    chrome.runtime.sendMessage({ action: "setBadgeRecording" });
+  }
+}
+
 const captureBoardState = function () {
   let boardState = [];
-  forEachCell( (i, cell) => {
+  forEachCell((_, cell) => {
     let x, y, label, fill;
     ({ x, y } = getXYForCell(cell));
     if (cell.classList.contains(cellClass)) {
@@ -249,9 +222,7 @@ const captureBoardState = function () {
       fill = null; // denotes that it is a non-fillable cell
     }
     let cellState = { x, y, fill };
-    if (label !== undefined) {
-      cellState.label = label
-    }
+    if (label !== undefined) { cellState.label = label; }
     boardState.push(cellState);
   });
   return boardState;
@@ -304,7 +275,7 @@ const cellCallback = function (mutationsList, _observer) {
   // don't update any cells if we are currently in stopped state
   // this prevents us from re-adding already-solved cells as events
   // if we partially solve, then navigate away
-  if (currentlyStopped()) {
+  if (currentlyStopped(record)) {
     return;
   }
 
@@ -372,32 +343,15 @@ const cellCallback = function (mutationsList, _observer) {
   }
 };
 
-// We should be in a stopped state if and only if the last event
-// was a stop event (or there have been no events yet at all)
-const currentlyStopped = function() {
-  return (record.events.length == 0 ||
-          record.events[record.events.length - 1].type == "stop" ||
-          currentlySolved());
-}
-
-// We should be in a solved state if and only if the last event
-// was a successful submit event
-const currentlySolved = function() {
-  return (record.events.length > 0 &&
-          record.events[record.events.length - 1].type == "submit" &&
-          record.events[record.events.length - 1].success);
-}
-
 // if we navigate away/close tab, record a stop event if
 // we aren't already stopped, and write the record out
 window.onbeforeunload = () => {
-  if (!currentlyStopped()) { recordEvent("stop"); }
+  if (!currentlyStopped(record)) { recordEvent("stop"); }
   chrome.runtime.sendMessage({
     action: "storeRecord",
     key: storageKey,
     record: record,
   });
-  chrome.runtime.sendMessage({ action: "clearBadge" });
 };
 
 // interaction with popup
@@ -410,29 +364,23 @@ chrome.runtime.onMessage.addListener(
     } else if (request.action === "storeRecord") {
       // service worker manages storage
       chrome.runtime.sendMessage(
-        {
-          action: "storeRecord",
-          key: storageKey,
-          record: record,
-        },
+        { action: "storeRecord", key: storageKey, record: record },
         sendResponse,
       );
     } else if (request.action === "clearRecord") {
       // service worker manages storage
       chrome.runtime.sendMessage(
-        {
-          action: "clearRecord",
-          key: storageKey,
-        },
+        { action: "clearRecord", key: storageKey },
         sendResponse,
       );
       record = {};
-      updateRecordMetadata();
-      if (currentlySolved()) {
-        chrome.runtime.sendMessage({ action: "setBadgeSolved" });
-      } else {
-        chrome.runtime.sendMessage({ action: "setBadgeRecording" });
-      }
+      chrome.storage.sync.get(["solverName", "logUserAgent"], (result) => {
+        let userInfo = {};
+        if (result.solverName) { userInfo.solverName = result.solverName }
+        if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
+        updateRecordMetadata(record, userInfo, puzzle);
+        updateBadgeAndObservers(record, observerData);
+      });
     } else if (request.action === "downloadRecord") {
       let defaultStub = window.location.pathname
         .replace(/^\/crosswords\/game\//, "")
@@ -442,15 +390,27 @@ chrome.runtime.onMessage.addListener(
         record: record,
         defaultFilename: `nyt-${defaultStub}.json`,
       });
-    } else if (request.action === "enableRecording") {
-      enableObservers();
-      sendResponse({ success: true });
-    } else if (request.action === "disableRecording") {
-      disableObservers();
-      sendResponse({ success: true });
     }
     // force synchronous, otherwise calling sendResponse in the callbacks
     // seems to cause problems
     return true;
   }
 );
+
+// MAIN
+
+// If for whatever reason we can't find the puzzle layout,
+// nothing happens at all - record and observerData should
+// remain undefined, and there will be no observation of
+// updates or logging
+if (layout !== null && layout !== undefined) {
+  chrome.storage.sync.get([storageKey, "solverName", "logUserAgent"], (result) => {
+    record = result[storageKey] || {};
+    let userInfo = {};
+    if (result.solverName) { userInfo.solverName = result.solverName }
+    if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
+    updateRecordMetadata(record, userInfo, puzzle);
+    observerData = createObservers();
+    updateBadgeAndObservers(record, observerData);
+  });
+}
