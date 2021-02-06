@@ -2,7 +2,6 @@
 
 import {
   downloadRecord,
-  deleteRecordByKey,
   humanizedRecordName,
   suggestedRecordFilename,
 } from "./common.js";
@@ -108,7 +107,15 @@ const buildRow = (rowId, record) => {
   recordDeleteButton.textContent = "Delete";
   recordDeleteButton.addEventListener("click", () => {
     let verify = confirm(`Are you sure you want to delete "${linktext}"? This cannot be undone.`);
-    if (verify) { deleteRecordByKey(rowId); }
+    if (verify) {
+      chrome.storage.sync.remove(rowId, () => {
+        if (chrome.runtime.lastError) {
+          console.log(`Failed to remove key ${rowId}: ${chrome.runtime.lastError}`);
+        } else {
+          console.log(`Removed key ${rowId}`);
+        }
+      });
+    }
   });
   recordDelete.append(recordDeleteButton);
   row.append(recordDelete);
@@ -164,7 +171,13 @@ document.getElementById("delete-all-records").addEventListener("click", () => {
   if (verify) {
     chrome.storage.sync.get(null, (result) => {
       let recordKeys = Object.keys(result).filter(k => k.startsWith("record-"));
-      deleteRecordByKey(recordKeys);
+      chrome.storage.sync.remove(recordKeys, () => {
+        if (chrome.runtime.lastError) {
+          console.log(`Failed to remove keys ${recordKeys}: ${chrome.runtime.lastError}`);
+        } else {
+          console.log(`Removed key ${recordKeys}`);
+        }
+      });
     });
   }
 });

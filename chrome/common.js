@@ -41,16 +41,6 @@ export const downloadRecord = (record, opts = {}) => {
   });
 };
 
-export const deleteRecordByKey = (key) => {
-  chrome.storage.sync.remove(key, () => {
-    if (chrome.runtime.lastError) {
-      console.log(`Failed to remove key ${key}: ${chrome.runtime.lastError}`);
-    } else {
-      console.log(`Removed key ${key}`);
-    }
-  });
-}
-
 export const humanizedRecordName = function(record) {
   let name = [];
   if (record.title && record.title !== "") {
