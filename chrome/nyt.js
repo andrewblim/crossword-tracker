@@ -23,18 +23,7 @@ const revealedClass = "Shame-revealed--3jDzk";
 const checkedClass = "Shame-checked--3E9GW";
 const congratsClass = "CongratsModal-congratsModalContent--19hpv";
 
-let record, observer;
-
-let eventFlushFrequency, eventLogLevel;
-chrome.storage.sync.get(
-  ["eventLogLevel", "nytSettings"],
-  (result) => {
-    // TODO: reference centralized defaults
-    eventLogLevel = result.eventLogLevel || "full";
-    eventFlushFrequency = result.nytSettings?.eventFlushFrequency || 9999;
-  }
-);
-
+// per-page constants
 const storageKey = `record-${window.location.href}`;
 const puzzle = document.querySelector(`div.${puzzleClass}`);
 const firstCell = document.getElementById("cell-id-0");
@@ -329,15 +318,24 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
-if (puzzle) {
-  chrome.storage.sync.get([storageKey, "solverName", "logUserAgent"], (result) => {
-    record = result[storageKey] || {};
-    let userInfo = {};
-    if (result.solverName) { userInfo.solverName = result.solverName }
-    if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
-    updateRecordMetadata(record, userInfo, puzzle);
+let record, observer;
+let eventFlushFrequency, eventLogLevel;
 
-    observer = new MutationObserver(puzzleCallback);
-    updateRecordingStatus(record);
-  });
+if (puzzle) {
+  chrome.storage.sync.get(
+    [storageKey, "solverName", "eventLogLevel", "logUserAgent", "nytSettings"],
+    (result) => {
+      eventLogLevel = result.eventLogLevel || "full";
+      eventFlushFrequency = result.nytSettings?.eventFlushFrequency;
+
+      record = result[storageKey] || {};
+      let userInfo = {};
+      if (result.solverName) { userInfo.solverName = result.solverName }
+      if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
+      updateRecordMetadata(record, userInfo, puzzle);
+
+      observer = new MutationObserver(puzzleCallback);
+      updateRecordingStatus(record);
+    },
+  );
 }

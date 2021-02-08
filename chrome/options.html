@@ -4,14 +4,14 @@
     <link rel="stylesheet" href="options.css">
   </head>
   <body>
-    <div class="container">
+    <div id="container">
       <h1>Crossword Tracker - Preferences</h1>
       <p>
         If you update any settings, you may need to refresh pages that are already open to puzzles for the changes to take effect there.
       </p>
       <div class="options-section">
         <h2>General options</h2>
-        <div class="options-set">
+        <div class="options-set" id="general-options">
           <label for="solverName">Your name</label>
           <div>
             <input type="text" id="solverName"></input>
@@ -27,24 +27,28 @@
             </select>
           </div>
           <div>
-            Amount of detail to log. "Events only" only captures basic game events. "Events + navigation" also captures your navigation around the grid and clues.
+            Amount of detail to log. "Events only" only captures basic game events. "Events + navigation" also captures your navigation around the grid and the clues.
           </div>
           <label for="logUserAgent">Log user agent</label>
           <div>
             <input type="checkbox" id="logUserAgent"></input>
           </div>
           <div>
-            Whether or not to log user-agent info on the log. Changes will not take effect on a given log until you load and save it.
+            Whether or not to log user-agent info on the log. Changing this will not affect saved logs immediately, but the updated preference will be reflected the next time you open the corresponding puzzle.
           </div>
         </div>
-        <div>
-          <button id="save-general">Save</button>
+        <div class="options-set">
+          <div>
+            <button id="general-options-save">Save</button>
+          </div>
+          <div id="general-options-save-message">
+          </div>
         </div>
       </div>
       <div class="options-section">
         <h2>Site-specific settings</h2>
         <h3>New York Times</h3>
-        <div class="options-set">
+        <div class="options-set" id="nyt-options">
           <label for="nyt-eventFlushFrequency">Auto-save frequency</label>
           <div>
             <input type="text" id="nyt-eventFlushFrequency"></input>
@@ -53,7 +57,13 @@
             The frequency with which to auto-save event logs while solving. (Note that event logs are always saved on solve or when leaving the page anyway.) Every this-many events, we will save progress automatically. Leave blank for no auto-save.
           </div>
         </div>
-        <button id="save-nyt">Save</button>
+        <div class="options-set">
+          <div>
+            <button id="nyt-options-save">Save</button>
+          </div>
+          <div id="nyt-options-save-message">
+          </div>
+        </div>
       </div>
       <div class="options-section">
         <h2>Record management</h2>

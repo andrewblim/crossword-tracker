@@ -2,8 +2,8 @@ body {
   background-color: lightsteelblue;
 }
 
-.container {
-  width: 70%;
+#container {
+  width: 65%;
   margin: auto;
   padding: 10px 20px 50px 20px;
   background-color: white;

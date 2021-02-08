@@ -20,18 +20,11 @@ chrome.storage.sync.get(
   }
 )
 
-const saveGeneral = async (callback) => {
-  chrome.storage.sync.set(
-    {
-      solverName: document.getElementById("solverName").value,
-      eventLogLevel: document.getElementById("eventLogLevel").value,
-      logUserAgent: document.getElementById("logUserAgent").checked,
-    },
-    callback,
-  );
-};
-
 const saveNyt = async (callback) => {
+  const eventFlushFrequency = parseInt(document.getElementById("nyt-eventFlushFrequency").value) || null;
+  if (eventFlushFrequency && eventFlushFrequency < 0) {
+    document.getElementById("general-options-save-message").textContent = "";
+  }
   chrome.storage.sync.set(
     {
       nytSettings: {
@@ -42,24 +35,60 @@ const saveNyt = async (callback) => {
   );
 };
 
-document.getElementById("save-general").addEventListener("click", () => {
-  saveGeneral(() => {
-    if (chrome.runtime.lastError) {
-      console.log("Failed to save general settings");
-    } else {
-      console.log("General settings saved");
-    }
-  });
+document.getElementById("general-options").addEventListener("change", () => {
+  document.getElementById("general-options-save-message").textContent = "";
 });
 
-document.getElementById("save-nyt").addEventListener("click", () => {
-  saveNyt(() => {
-    if (chrome.runtime.lastError) {
-      console.log("Failed to save New York Times settings");
-    } else {
-      console.log("New York Times settings saved");
-    }
-  });
+document.getElementById("general-options-save").addEventListener("click", () => {
+  chrome.storage.sync.set(
+    {
+      solverName: document.getElementById("solverName").value,
+      eventLogLevel: document.getElementById("eventLogLevel").value,
+      logUserAgent: document.getElementById("logUserAgent").checked,
+    },
+    () => {
+      if (chrome.runtime.lastError) {
+        const msg = `Failed to save settings: ${chrome.runtime.lastError}`;
+        document.getElementById("general-options-save-message").textContent = msg;
+        console.log(msg);
+      } else {
+        const msg = "Settings saved";
+        document.getElementById("general-options-save-message").textContent = msg;
+        console.log(msg);
+      }
+    },
+  );
+});
+
+document.getElementById("nyt-options").addEventListener("change", () => {
+  document.getElementById("nyt-options-save-message").textContent = "";
+});
+
+document.getElementById("nyt-options-save").addEventListener("click", () => {
+  const eventFlushFrequency = parseInt(document.getElementById("nyt-eventFlushFrequency").value) || null;
+  if (eventFlushFrequency && eventFlushFrequency <= 0) {
+    const msg = "Flush frequency must be parseable to a positive integer, or blank"
+    document.getElementById("nyt-options-save-message").textContent = msg;
+  } else {
+    chrome.storage.sync.set(
+      {
+        nytSettings: {
+          eventFlushFrequency: parseInt(document.getElementById("nyt-eventFlushFrequency").value) || null,
+        },
+      },
+      () => {
+        if (chrome.runtime.lastError) {
+          const msg = `Failed to save settings: ${chrome.runtime.lastError}`;
+          document.getElementById("nyt-options-save-message").textContent = msg;
+          console.log(msg);
+        } else {
+          const msg = "Settings saved";
+          document.getElementById("nyt-options-save-message").textContent = msg;
+          console.log(msg);
+        }
+      },
+    );
+  }
 });
 
 // Build and update rows in the table of records
@@ -120,9 +149,11 @@ const buildRow = (rowId, record) => {
     if (verify) {
       chrome.storage.sync.remove(rowId, () => {
         if (chrome.runtime.lastError) {
-          console.log(`Failed to remove key ${rowId}: ${chrome.runtime.lastError}`);
+          msg = `Failed to remove key ${rowId}: ${chrome.runtime.lastError}`
+          console.log(msg);
         } else {
-          console.log(`Removed key ${rowId}`);
+          msg = `Removed ${linktext}`
+          console.log(msg);
         }
       });
     }

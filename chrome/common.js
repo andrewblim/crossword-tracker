@@ -1,34 +1,5 @@
 "use strict";
 
-const userSettings = {
-  solverName: {
-    default: "",
-    description: "Solver's name",
-  },
-  eventLogLevel: {
-    default: "full",
-    description: "How much logging to do. Can be \"basic\", which logs only " +
-      "game events and square updates, or \"full\", which also logs any " +
-      "currently highlighted clues."
-  },
-  logUserAgent: {
-    default: false,
-    description: "Whether to log user-agent information when creating a " +
-      "record. This carries operating and browser system information. It " +
-      "can be informative, for example reflecting mobile vs. computer.",
-  }
-};
-
-const siteSpecificSettings = {
-  nyt: {
-    eventFlushFrequency: {
-      default: 30,
-      description: "When recording, every this-many events, save the data " +
-        "to browser storage."
-    },
-  },
-};
-
 const downloadRecord = (record, opts = {}) => {
   chrome.downloads.download({
     url: URL.createObjectURL(
