@@ -6,12 +6,10 @@ const userSettings = {
     description: "Solver's name",
   },
   eventLogLevel: {
-    default: "select",
+    default: "full",
     description: "How much logging to do. Can be \"basic\", which logs only " +
-      "game events and square updates, \"select\", which also logs the " +
-      "currently selected square, or \"full\", which also logs any " +
-      "currently highlighted squares (such as other squares in the clue). " +
-      "The more detailed logs are naturally larger.",
+      "game events and square updates, or \"full\", which also logs any " +
+      "currently highlighted clues."
   },
   logUserAgent: {
     default: false,

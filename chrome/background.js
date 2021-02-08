@@ -14,7 +14,7 @@ chrome.runtime.onInstalled.addListener(() => {
       const update = Object.assign(
         {
           "solverName": "",
-          "eventLogLevel": "selection",
+          "eventLogLevel": "full",
           "logUserAgent": false,
           "nytSettings": {
             "eventFlushFrequency": 30,

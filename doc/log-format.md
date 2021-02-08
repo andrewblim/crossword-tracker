@@ -25,7 +25,7 @@ The crossword log file consists of a JSON object with the keys described below. 
 - `label`: (string, mandatory) the clue number
 - `text`: (string, mandatory) the text of the clue
 
-There is no restriction against unusual labels or labels that would be considered inconsistent in a standard crossword. Each clue section's clues are not guaranteed to be in any particular order.
+There is no restriction against unusual labels or labels that would be considered inconsistent in a standard crossword; however, there should not be two clues with the same label in the same clue section. Each clue section's clues are not guaranteed to be in any particular order.
 
 Although presumably having two clue sections `"Across"` and `"Down"` will be common, there is no restriction on how many clue sections there are. An empty object `{}` is legal here, and in fact would be a perfectly fine way to generate a log that has no clue information.
 
@@ -54,9 +54,12 @@ The following event types are recognized as having particular meaning:
   - `x`, `y`: (strings, mandatory) The (x,y) position of the updated square.
   - `fill`: (string, mandatory) The updated fill value of the square. Entering a letter would be represented by a length-1 string; a rebus entry would be a longer string; deleting an entry would be an empty string.
 - `submit`: The solver has submitted the puzzle. There will be an additional field `success` with a boolean value true/false if the puzzle was completely correct or not.
-- `select`: The solver is primarily focused on a particular square, meaning that this is the square they are focused on filling in. There will be additional fields `{x, y}` indicating the square. At most one square should be considered selected at a time; a subsequent `select` event necessarily implies that any previously selected square is deselected.
 - `check`: The solver has requested a check on a square. There will be additional fields `{x, y}` indicating the square.
 - `reveal`: The solver has requested a reveal on a square. There will be additional fields `{x, y}` indicating the square. Note that this does not cover the actual update of the square; we would still expect a separate (possibly concurrent) `update` event if the square was not already filled with the right answer.
+- `select`: The solver is primarily focused on a particular square (if the solver types something, this is the square it will go in). There will be additional fields `{x, y}` indicating the square. At most one square should be considered selected at a time; a subsequent `select` event necessarily implies that any previously selected square is deselected.
+- `selectClue`: The solver is primarily focused on a particular clue. There will be two additional fields:
+  - `clueSection`: The name of the clue section, which should correspond to a section in the `clueSections` metadata.
+  - `clueLabel`: The label of the clue section, which should correspond to a clue entry in the appropriate `clueSection` metadata.
 
 ### Unrecognized event types / extra even attributes
 

@@ -1,6 +1,6 @@
 "use strict";
 
-// magic constants (from NYT's crossword CSS/HTML)
+// constants from NYT's crossword CSS/HTML
 
 const puzzleClass = "app-appWrapper--2PSLL";
 
@@ -13,6 +13,7 @@ const clueListTitleClass = "ClueList-title--1-3oW";
 const clueClass = "Clue-li--1JoPu";
 const clueLabelClass = "Clue-label--2IdMY";
 const clueTextClass = "Clue-text--3lZl7";
+const clueSelectedClass = "Clue-selected--1ta_-";
 
 const veilClass = "Veil-veil--3oKaF";
 const cellClass = "Cell-cell--1p4gH";
@@ -22,22 +23,19 @@ const revealedClass = "Shame-revealed--3jDzk";
 const checkedClass = "Shame-checked--3E9GW";
 const congratsClass = "CongratsModal-congratsModalContent--19hpv";
 
-// other constants, not user-configurable
-
-const storageKey = `record-${window.location.href}`;
-
-// Variables for user-configurable options
+let record, observer;
 
 let eventFlushFrequency, eventLogLevel;
 chrome.storage.sync.get(
   ["eventLogLevel", "nytSettings"],
   (result) => {
     // TODO: reference centralized defaults
-    eventLogLevel = result.eventLogLevel || "basic";
+    eventLogLevel = result.eventLogLevel || "full";
     eventFlushFrequency = result.nytSettings?.eventFlushFrequency || 9999;
   }
 );
 
+const storageKey = `record-${window.location.href}`;
 const puzzle = document.querySelector(`div.${puzzleClass}`);
 const firstCell = document.getElementById("cell-id-0");
 const xSize = firstCell?.getAttribute("width");
@@ -70,10 +68,7 @@ const forEachCell = function (f) {
   }
 }
 
-let record, observer;
-
 // Update record with metadata from the DOM and from supplied user info
-
 const updateRecordMetadata = function (record, userInfo, puzzle) {
   // Version info not yet used, but reserved for the future, in case we want to
   // make breaking changes to the format.
@@ -169,7 +164,9 @@ const captureBoardState = function () {
   return boardState;
 };
 
-const recordEventBatch = function (events, timestamp) {
+// Record a batch of events that occur at the same time. Don't record events
+// that would put the event log in a bad state - order the events properly.
+const recordConcurrentEventBatch = function (events, timestamp) {
   if (!timestamp) { timestamp = new Date().getTime(); }
 
   // Ensure events are added in a consistent order, so that, for example, we
@@ -181,7 +178,7 @@ const recordEventBatch = function (events, timestamp) {
     check: 2,
     update: 3,
     select: 4,
-    highlight: 5,
+    selectClue: 5,
     stop: 9,
     submit: 99,
   }
@@ -195,7 +192,7 @@ const recordEventBatch = function (events, timestamp) {
   }
 
   for (const event of events) {
-    record.events.push({ timestamp, ...event });
+    record.events.push({ ...event, timestamp });
     let successfulSubmit = event.type === "submit" && event.success;
     let timeToRecord;
     if (eventFlushFrequency) {
@@ -261,15 +258,30 @@ const puzzleCallback = function (mutationsList, _observer) {
         } else if (mutation.target.classList?.contains(checkedClass)) {
           let cell = getCellSibling(mutation.target);
           if (cell) { newEvents.push({ type: "check", ...getXYForCell(cell) }); }
-        } else if (mutation.target.classList?.contains(selectedClass)) {
-          // TODO: make loglevel work again
+        } else if (eventLogLevel === "full" &&
+                   mutation.target.classList?.contains(selectedClass) &&
+                   !(mutation.oldValue.split(" ").includes(selectedClass))) {
           let cell = getCellSibling(mutation.target);
           if (cell) { newEvents.push({ type: "select", ...getXYForCell(cell) }); }
+        } else if (eventLogLevel === "full" &&
+                   mutation.target.classList?.contains(clueSelectedClass) &&
+                   !(mutation.oldValue.split(" ").includes(clueSelectedClass))) {
+          let clueSection =
+            Array.from(mutation.target.parentElement?.parentElement?.children || [])
+            .find(elem => elem.classList?.contains(clueListTitleClass))
+            ?.textContent || null;
+          let clueLabel =
+            Array.from(mutation.target.children || [])
+            .find(elem => elem.classList?.contains(clueLabelClass))
+            ?.textContent || null;
+          if (clueSection && clueLabelClass) {
+            newEvents.push({ type: "selectClue", clueSection, clueLabel });
+          }
         }
         break;
     }
   }
-  recordEventBatch(newEvents, timestamp);
+  recordConcurrentEventBatch(newEvents, timestamp);
 };
 
 // If we navigate away/close tab, record a stop event if we aren't already
@@ -277,7 +289,7 @@ const puzzleCallback = function (mutationsList, _observer) {
 // a loss of recorded info.
 
 window.onbeforeunload = () => {
-  if (!currentlyStopped(record)) { recordEventBatch([{ type: "stop" }]); }
+  if (!currentlyStopped(record)) { recordConcurrentEventBatch([{ type: "stop" }]); }
   chrome.runtime.sendMessage({ action: "storeRecord", key: storageKey, record: record });
 };
 
@@ -316,8 +328,6 @@ chrome.runtime.onMessage.addListener(
     return true;
   }
 );
-
-// MAIN
 
 if (puzzle) {
   chrome.storage.sync.get([storageKey, "solverName", "logUserAgent"], (result) => {
