@@ -81,7 +81,29 @@ const buildRow = (rowId, record) => {
   }
   row.append(recordName);
 
-  const recordDownload = document.createElement("td");
+  const recordVersion = document.createElement("td");
+  recordVersion.textContent = record.version || "";
+  row.append(recordVersion);
+
+  const recordStatus = document.createElement("td");
+  if (currentlySolved(record)) {
+    recordStatus.textContent = "solved";
+  } else if (record.events.length === 0) {
+    recordStatus.textContent = "unstarted";
+  } else {
+    recordStatus.textContent = "in progress";
+  }
+  row.append(recordStatus);
+
+  const recordLastUpdate = document.createElement("td");
+  if (record.events.length > 0) {
+    recordLastUpdate.textContent = new Date(record.events[record.events.length - 1].timestamp);
+  } else {
+    recordLastUpdate.textContent = 0;
+  }
+  row.append(recordLastUpdate);
+
+  const recordManagement = document.createElement("td");
   const recordDownloadButton = document.createElement("button");
   recordDownloadButton.textContent = "Download";
   recordDownloadButton.addEventListener("click", () => {
@@ -91,10 +113,6 @@ const buildRow = (rowId, record) => {
       }
     });
   });
-  recordDownload.append(recordDownloadButton);
-  row.append(recordDownload);
-
-  const recordDelete = document.createElement("td");
   const recordDeleteButton = document.createElement("button");
   recordDeleteButton.textContent = "Delete";
   recordDeleteButton.addEventListener("click", () => {
@@ -109,8 +127,9 @@ const buildRow = (rowId, record) => {
       });
     }
   });
-  recordDelete.append(recordDeleteButton);
-  row.append(recordDelete);
+  recordManagement.append(recordDownloadButton);
+  recordManagement.append(recordDeleteButton);
+  row.append(recordManagement);
 
   return row;
 }
@@ -127,6 +146,25 @@ const updateRow = (row, record) => {
     recordName.append(recordLink);
   } else {
     recordName.textContent = linktext;
+  }
+
+  const recordVersion = row.children[1];
+  recordVersion.textContent = record.version || "";
+
+  const recordStatus = row.children[2];
+  if (currentlySolved(record)) {
+    recordStatus.textContent = "solved";
+  } else if (record.events.length === 0) {
+    recordStatus.textContent = "unstarted";
+  } else {
+    recordStatus.textContent = "in progress";
+  }
+
+  const recordLastUpdate = row.children[3];
+  if (record.events.length > 0) {
+    recordLastUpdate.textContent = new Date(record.events[record.events.length - 1].timestamp);
+  } else {
+    recordLastUpdate.textContent = "";
   }
 }
 

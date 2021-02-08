@@ -1,0 +1,39 @@
+body {
+  background-color: lightsteelblue;
+}
+
+.container {
+  width: 70%;
+  margin: auto;
+  padding: 10px 20px 50px 20px;
+  background-color: white;
+}
+
+.options-section {
+  padding: 5px 0px 25px 5px;
+}
+
+.options-set {
+  display: grid;
+  grid-template-columns: 15em auto;
+  gap: 10px;
+  margin: 0px 0px 10px 0px;
+}
+
+.options-set > label {
+  grid-row: span 2;
+  font-weight: bold;
+}
+
+table {
+  margin: 5px auto 25px auto;
+  border-collapse: collapse;
+}
+
+th {
+  padding: 5px;
+}
+
+td {
+  padding: 5px;
+}
