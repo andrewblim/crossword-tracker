@@ -54,9 +54,9 @@ The following event types are recognized as having particular meaning:
   - `x`, `y`: (strings, mandatory) The (x,y) position of the updated square.
   - `fill`: (string, mandatory) The updated fill value of the square. Entering a letter would be represented by a length-1 string; a rebus entry would be a longer string; deleting an entry would be an empty string.
 - `submit`: The solver has submitted the puzzle. There will be an additional field `success` with a boolean value true/false if the puzzle was completely correct or not.
-- `select`: The solver is primarily focused on a particular square, meaning that this is the square they are focused on filling in. There will be additional fields `{x, y}` indicating the square. Only one square should be considered selected at a time; a subsequent `select` event necessarily implies that the previously selected square is deselected.
-- `highlight`: The solver is secondarily focused on a square, meaning that they are looking at a clue, and these squares are in that clue and are not already selected. There will be additional fields `{x, y}` indicating the square. Any number of squares may be highlighted at a given time, so unlike `select`, a square must be specifically `unhighlight`-ed to remove focus.
-- `unhighlight`: The solver is secondarily focused on a square, meaning that they are looking at a clue, and these squares are in that clue and are not already selected. There will be additional fields `{x, y}` indicating the square.
+- `select`: The solver is primarily focused on a particular square, meaning that this is the square they are focused on filling in. There will be additional fields `{x, y}` indicating the square. At most one square should be considered selected at a time; a subsequent `select` event necessarily implies that any previously selected square is deselected.
+- `check`: The solver has requested a check on a square. There will be additional fields `{x, y}` indicating the square.
+- `reveal`: The solver has requested a reveal on a square. There will be additional fields `{x, y}` indicating the square. Note that this does not cover the actual update of the square; we would still expect a separate (possibly concurrent) `update` event if the square was not already filled with the right answer.
 
 ### Unrecognized event types / extra even attributes
 
@@ -67,6 +67,21 @@ It is also permissible for any event of recognized type to carry _additional_ fi
 ### Other restrictions on `events`
 
 The `events` array must be sorted by `timestamp` (ties can be broken arbitrarily).
+
+If two or more events occur at the same time, events must be sorted by type in the following order:
+
+- `start`
+- `reveal`
+- `check`
+- `update`
+- `select`
+- `highlight`
+- `stop`
+- `submit`
+
+This allows us to ensure, for example, that a successful submission that automatically occurs concurrently with a final update always occurs after that update, or that a select event that automatically occurs concurrently with starting a puzzle occurs after the start.
+
+Any further ties can be broken arbitrarily.
 
 The first event in `events` _must_ be a `start` event. From there, there cannot be another `start` event until there has been a `stop` event. Once there has been a `stop` event, there cannot be any other kind of event except another `start` event.
 

@@ -89,9 +89,9 @@ document.getElementById("download-record").addEventListener("click", async () =>
     chrome.tabs.sendMessage(
       tabs[0].id,
       { action: "downloadRecord" },
-      ({ success, record, defaultFilename }) => {
+      ({ success, record }) => {
         if (success) {
-          downloadRecord(record, { filename: defaultFilename });
+          downloadRecord(record, { filename: suggestedRecordFilename(record) });
           updateStatusBar("Record download successfully requested");
         } else {
           updateStatusBar("Unable to download record");

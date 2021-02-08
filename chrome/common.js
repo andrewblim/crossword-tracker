@@ -68,18 +68,22 @@ const suggestedRecordFilename = function(record) {
   }
 }
 
-// Detect if we're in a "stopped" state. Useful to ensure that we don't record
-// any events so long as we are in this state.
+// Detect if we're in a "stopped" state after having started. Useful to
+// ensure that we don't record more events without starting
 const currentlyStopped = function(record) {
-  return (record.events.length == 0 ||
-          record.events[record.events.length - 1].type == "stop" ||
-          currentlySolved(record));
+  return (
+    record.events.length == 0 ||
+    record.events[record.events.length - 1].type === "stop" ||
+    currentlySolved(record)
+  );
 }
 
 // Detect if we're in a "solved" state. Useful to ensure that we don't record
 // any events so long as we are in this state, and to control badges.
 const currentlySolved = function(record) {
-  return (record.events.length > 0 &&
-          record.events[record.events.length - 1].type == "submit" &&
-          record.events[record.events.length - 1].success);
+  return (
+    record.events.length > 0 &&
+    record.events[record.events.length - 1].type === "submit" &&
+    record.events[record.events.length - 1].success
+  );
 }

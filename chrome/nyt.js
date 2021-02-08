@@ -3,7 +3,6 @@
 // magic constants (from NYT's crossword CSS/HTML)
 
 const puzzleClass = "app-appWrapper--2PSLL";
-const layoutClass = "Layout-unveilable--3OmrG";
 
 const titleClass = "PuzzleDetails-title--iv1IG";
 const dateClass = "PuzzleDetails-date--1HNzj";
@@ -18,9 +17,7 @@ const clueTextClass = "Clue-text--3lZl7";
 const veilClass = "Veil-veil--3oKaF";
 const cellClass = "Cell-cell--1p4gH";
 const blockClass = "Cell-block--1oNaD";
-const hiddenClass = "Cell-hidden--3xQI1";
 const selectedClass = "Cell-selected--2PAbF";
-const highlightedClass = "Cell-highlighted--2YbzJ";
 const revealedClass = "Shame-revealed--3jDzk";
 const checkedClass = "Shame-checked--3E9GW";
 const congratsClass = "CongratsModal-congratsModalContent--19hpv";
@@ -42,27 +39,24 @@ chrome.storage.sync.get(
 );
 
 const puzzle = document.querySelector(`div.${puzzleClass}`);
-const layout = puzzle?.querySelector(`div.${layoutClass}`);
 const firstCell = document.getElementById("cell-id-0");
-const xSize = firstCell?.width;
-const ySize = firstCell?.height;
-const xOffset = firstCell?.x;
-const yOffset = firstCell?.y;
+const xSize = firstCell?.getAttribute("width");
+const ySize = firstCell?.getAttribute("height");
+const xOffset = firstCell?.getAttribute("x");
+const yOffset = firstCell?.getAttribute("y");
 
 // given a "cell-id-" element, get its (x,y)
 const getXYForCell = function(rectElem) {
   return {
-    x: (rectElem.x - xOffset) / xSize,
-    y: (rectElem.y - yOffset) / ySize,
+    x: (rectElem.getAttribute("x") - xOffset) / xSize,
+    y: (rectElem.getAttribute("y") - yOffset) / ySize,
   };
 }
 
-// given a sibling element to a "cell-id-" element, get its (x,y)
-const getXYForCellSibling = function(siblingElem) {
-  const cell = Array(siblingElem.parentElement.children)
+// given a sibling to a "cell-id-" element, get the "cell-id-" element
+const getCellSibling = function(siblingElem) {
+  return Array.from(siblingElem.parentElement.children)
     .find(elem => elem.id?.startsWith("cell-id-"));
-  if (cell) { return getXYForCell(elem); }
-  return { x: null, y: null };
 }
 
 // iterate through cells
@@ -76,7 +70,7 @@ const forEachCell = function (f) {
   }
 }
 
-let record, observerData;
+let record, observer;
 
 // Update record with metadata from the DOM and from supplied user info
 
@@ -133,72 +127,19 @@ const updateRecordMetadata = function (record, userInfo, puzzle) {
   if (!record.events) { record.events = []; }
 }
 
-const createObservers = function () {
-  let observerData = [];
-
-  // Observe the layout to detect whether a start/stop event
-  // has occurred (addition of a "veil" element). Only needs
-  // to observe childList.
-  observerData.push({
-    observer: new MutationObserver(startStopCallback),
-    target: layout,
-    options: { childList: true },
-  });
-
-  // Observe puzzle, to detect the congrats modal, which
-  // we treat as a successful submit. Only needs to observe
-  // childList.
-  observerData.push({
-    observer: new MutationObserver((mutationsList, _observer) => {
-      if (mutationsList.find(x => x.target.querySelector(`.${congratsClass}`))) {
-        recordEvent("submit", new Date().getTime(), { success: true });
-      }
-    }),
-    target: puzzle,
-    options: { childList: true },
-  });
-
-  // Observe each square in the puzzle to detect updates, reveals,
-  // and checks. Needs to check childList, subtree, characterData,
-  // and attributes (for "class" only).
-  forEachCell((_, cell) => {
-    if (cell.classList.contains(cellClass)) {
-      observerData.push({
-        observer: new MutationObserver(cellCallback),
-        target: cell.parentElement,
-        options: {
-          attributes: true,
-          childList: true,
-          subtree: true,
-          characterData: true,
-          attributeOldValue: true,
-          attributeFilter: ["class"],
-        },
-      });
-    }
-  });
-
-  return observerData;
-}
-
-const enableObservers = function() {
-  for (const data of observerData) {
-    data.observer.observe(data.target, data.options)
-  }
-}
-
-const disableObservers = function() {
-  for (const data of observerData) {
-    data.observer.disconnect();
-  }
-}
-
-const updateBadgeAndObservers = function(record) {
+const updateRecordingStatus = function(record) {
   if (currentlySolved(record)) {
-    disableObservers();
+    observer.disconnect();
     chrome.runtime.sendMessage({ action: "setBadgeSolved" });
   } else {
-    enableObservers();
+    observer.observe(puzzle, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributeOldValue: true,
+      attributeFilter: ["class"],
+    });
     chrome.runtime.sendMessage({ action: "setBadgeRecording" });
   }
 }
@@ -211,11 +152,11 @@ const captureBoardState = function () {
     if (cell.classList.contains(cellClass)) {
       let labelElem = cell.parentElement.querySelector("[text-anchor=start]");
       if (labelElem !== null) {
-        label = Array.from(labelElem.childNodes).find(x => x.nodeType == 3)?.data;
+        label = Array.from(labelElem.childNodes).find(x => x.nodeType === 3)?.data;
       }
       let fillElem = cell.parentElement.querySelector("[text-anchor=middle]");
       if (fillElem !== null) {
-        fill = Array.from(fillElem.childNodes).find(x => x.nodeType == 3)?.data;
+        fill = Array.from(fillElem.childNodes).find(x => x.nodeType === 3)?.data;
       }
     } else if (cell.classList.contains(blockClass)) {
       label = undefined;
@@ -228,136 +169,122 @@ const captureBoardState = function () {
   return boardState;
 };
 
-const recordEvent = function (type, timestamp, info = {}) {
-  record.events.push({ type, timestamp, ...info });
-  let successfulSubmit = type === "submit" && info.success;
-  let timeToRecord;
-  if (eventFlushFrequency) {
-    timeToRecord = record.events.length % eventFlushFrequency === 0;
-  }
-  if (successfulSubmit || timeToRecord) {
-    chrome.runtime.sendMessage({
-      action: "storeRecord",
-      key: storageKey,
-      record: record,
-    });
-  }
-  if (successfulSubmit) {
-    // NOTE - once you've solved a puzzle, we won't keep logging anything.
-    // So if you clear the puzzle and start again, we won't log anything new
-    // unless you clear out the event log from storage manually. Seemed
-    // reasonable (instead of accidentally logging extra stuff), but maybe
-    // an option to toggle in the future, if people like clearing and
-    // restarting more than I realize they do
-    disableObservers();
-    chrome.runtime.sendMessage({ action: "setBadgeSolved" });
-  }
-};
+const recordEventBatch = function (events, timestamp) {
+  if (!timestamp) { timestamp = new Date().getTime(); }
 
-const startStopCallback = function (mutationsList, _observer) {
-  let start = false, stop = false;
-  for (const mutation of mutationsList) {
-    if (Array.from(mutation.addedNodes).find(x => x.classList.contains(veilClass))) {
-      stop = true;
-    }
-    if (Array.from(mutation.removedNodes).find(x => x.classList.contains(veilClass))) {
-      start = true;
-    }
+  // Ensure events are added in a consistent order, so that, for example, we
+  // don't leave the log in an inconsistent state with fill happening after
+  // a submit.
+  const eventPriority = {
+    start: 0,
+    reveal: 1,
+    check: 2,
+    update: 3,
+    select: 4,
+    highlight: 5,
+    stop: 9,
+    submit: 99,
   }
-  if (start) {
-    recordEvent("start", new Date().getTime());
-  } else if (stop) {
-    recordEvent("stop", new Date().getTime());
-  }
-};
+  events.sort((a, b) => ((eventPriority[a] || 0) - (eventPriority[b] || 0)))
 
-const cellCallback = function (mutationsList, _observer) {
-  // don't update any cells if we are currently in stopped state
-  // this prevents us from re-adding already-solved cells as events
-  // if we partially solve, then navigate away
-  if (currentlyStopped(record)) {
+  // Don't record anything if we are stopped, unless there is a start event
+  // in the event batch. This prevents us from incorrectly creating events
+  // if we load a puzzle that already has fill.
+  if (currentlyStopped(record) && events.length > 0 && events[0].type !== "start") {
     return;
   }
 
-  // record timestamp now, to ensure that if we record multiple events
-  // on this callback, they are recorded with the same timestamp
-  let timestamp = new Date().getTime();
-
-  for (const mutation of mutationsList) {
-    if (mutation.type == "characterData") {
-      // ignore changes in the "hidden" elements
-      if (mutation.target.parentElement.classList.contains(hiddenClass)) {
-        continue;
-      }
-      let eventData = getXYForCellSibling(mutation.target);
-      eventData.fill = mutation.target.data;
-      recordEvent("update", timestamp, eventData);
+  for (const event of events) {
+    record.events.push({ timestamp, ...event });
+    let successfulSubmit = event.type === "submit" && event.success;
+    let timeToRecord;
+    if (eventFlushFrequency) {
+      timeToRecord = record.events.length % eventFlushFrequency === 0;
     }
-    else if (mutation.type == "childList") {
-      // ignore changes in the "hidden" elements
-      if (mutation.target.classList.contains(hiddenClass)) {
-        continue;
-      }
-      for (const addition of mutation.addedNodes) {
-        if (addition.classList.contains(revealedClass)) {
-          recordEvent("reveal", timestamp, getXYForCellSibling(addition));
-          break;
-        } else if (addition.classList.contains(checkedClass)) {
-          recordEvent("check", timestamp, getXYForCellSibling(addition));
-          break;
-        }
-        // ignore addition of other nodes, such as the <use> element
-        // that appears when you check/reveal
-      }
-      // note that other changes are possible; we ignore node removal,
-      // which can happen if you have <use> elements but then you
-      // reset the puzzle
+    if (successfulSubmit || timeToRecord) {
+      chrome.runtime.sendMessage({ action: "storeRecord", key: storageKey, record: record });
     }
-    else if (mutation.type === "attributes" && mutation.target.nodeName === "use") {
-      // ignore anything other than modifications to the <use> object
-      // that appears and persists once you check/reveal
-      if (mutation.target.classList.contains(revealedClass)) {
-        recordEvent("reveal", timestamp, getXYForCellSibling(mutation.target));
-        break;
-      } else if (mutation.target.classList.contains(checkedClass)) {
-        recordEvent("check", timestamp, getXYForCellSibling(mutation.target));
-        break;
-      }
-    } else if (mutation.type === "attributes" && mutation.target.nodeName === "rect") {
-      // selection/highlight logging
-      // this can generate multiple events (i.e. both a selection and a highlight)
-      if ((eventLogLevel === "selection" || eventLogLevel === "full") &&
-          mutation.target.classList.contains(selectedClass)) {
-        recordEvent("select", timestamp, getXYForCellSibling(mutation.target));
-      }
-      if (eventLogLevel === "full" &&
-          mutation.target.classList.contains(highlightedClass) &&
-          (mutation.oldValue === undefined || !mutation.oldValue.split(" ").includes(highlightedClass))) {
-        recordEvent("highlight", timestamp, getXYForCellSibling(mutation.target));
-      } else if (eventLogLevel === "full" &&
-                 !mutation.target.classList.contains(highlightedClass) &&
-                 (mutation.oldValue && mutation.oldValue.split(" ").includes(highlightedClass))) {
-        recordEvent("unhighlight", timestamp, getXYForCellSibling(mutation.target));
-      }
+    if (successfulSubmit) {
+      observer.disconnect();
+      chrome.runtime.sendMessage({ action: "setBadgeSolved" });
     }
   }
 };
 
-// if we navigate away/close tab, record a stop event if
-// we aren't already stopped, and write the record out
-window.onbeforeunload = () => {
-  if (!currentlyStopped(record)) { recordEvent("stop"); }
-  chrome.runtime.sendMessage({
-    action: "storeRecord",
-    key: storageKey,
-    record: record,
-  });
+const puzzleCallback = function (mutationsList, _observer) {
+  // record timestamp now, to ensure that all events generated from each call
+  // are generated with the same timestamp
+  let newEvents = [];
+  let timestamp = new Date().getTime();
+
+  for (const mutation of mutationsList) {
+    switch (mutation.type) {
+      case "characterData":
+        // square update
+        if (mutation.target.parentElement?.getAttribute("text-anchor") === "middle") {
+          let fill = mutation.target.data;
+          let cell = getCellSibling(mutation.target.parentElement);
+          if (cell) {
+            newEvents.push({ type: "update", ...getXYForCell(cell), fill });
+          }
+        }
+        break;
+      case "childList":
+        // - submit (solve) occurs via insertion of a fresh modal at the puzzle
+        //   level that if successful contains a congratulatory sub-element
+        // - start/stop occurs via removal/addition of a "veil" modal
+        // - initial reveal/check for a given square inserts a <use> element
+        for (const node of mutation.addedNodes) {
+          if (mutation.target === puzzle && node.querySelector(`.${congratsClass}`)) {
+            newEvents.push({ type: "submit", success: true });
+          } else if (node.classList?.contains(veilClass)) {
+            newEvents.push({ type: "stop" });
+          } else if (node.classList?.contains(revealedClass)) {
+            let cell = getCellSibling(node);
+            if (cell) { newEvents.push({ type: "reveal", ...getXYForCell(cell) }); }
+          } else if (node.classList?.contains(checkedClass)) {
+            let cell = getCellSibling(node);
+            if (cell) { newEvents.push({ type: "check", ...getXYForCell(cell) }); }
+          }
+        }
+        for (const node of mutation.removedNodes) {
+          if (node.classList?.contains(veilClass)) {
+            newEvents.push({ type: "start" });
+          }
+        }
+        break;
+      case "attributes":
+        // subsequent reveal/check (<use> element already there and gets modified)
+        if (mutation.target.classList?.contains(revealedClass)) {
+          let cell = getCellSibling(mutation.target);
+          if (cell) { newEvents.push({ type: "reveal", ...getXYForCell(cell) }); }
+        } else if (mutation.target.classList?.contains(checkedClass)) {
+          let cell = getCellSibling(mutation.target);
+          if (cell) { newEvents.push({ type: "check", ...getXYForCell(cell) }); }
+        } else if (mutation.target.classList?.contains(selectedClass)) {
+          // TODO: make loglevel work again
+          let cell = getCellSibling(mutation.target);
+          if (cell) { newEvents.push({ type: "select", ...getXYForCell(cell) }); }
+        }
+        break;
+    }
+  }
+  recordEventBatch(newEvents, timestamp);
 };
 
-// interaction with popup
+// If we navigate away/close tab, record a stop event if we aren't already
+// stopped and write the record out, so that navigating away doesn't result in
+// a loss of recorded info.
+
+window.onbeforeunload = () => {
+  if (!currentlyStopped(record)) { recordEventBatch([{ type: "stop" }]); }
+  chrome.runtime.sendMessage({ action: "storeRecord", key: storageKey, record: record });
+};
+
+// Interaction with popup
 
 chrome.runtime.onMessage.addListener(
-  function (request, sender, sendResponse) {
+  function (request, _sender, sendResponse) {
     if (request.action === "logRecord") {
       console.log(record);
       sendResponse({ success: true });
@@ -379,17 +306,10 @@ chrome.runtime.onMessage.addListener(
         if (result.solverName) { userInfo.solverName = result.solverName }
         if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
         updateRecordMetadata(record, userInfo, puzzle);
-        updateBadgeAndObservers(record, observerData);
+        updateRecordingStatus(record);
       });
     } else if (request.action === "downloadRecord") {
-      let defaultStub = window.location.pathname
-        .replace(/^\/crosswords\/game\//, "")
-        .replace(/\//g, "-");
-      sendResponse({
-        success: true,
-        record: record,
-        defaultFilename: `nyt-${defaultStub}.json`,
-      });
+      sendResponse({ success: true, record });
     }
     // force synchronous, otherwise calling sendResponse in the callbacks
     // seems to cause problems
@@ -399,18 +319,15 @@ chrome.runtime.onMessage.addListener(
 
 // MAIN
 
-// If for whatever reason we can't find the puzzle layout,
-// nothing happens at all - record and observerData should
-// remain undefined, and there will be no observation of
-// updates or logging
-if (layout !== null && layout !== undefined) {
+if (puzzle) {
   chrome.storage.sync.get([storageKey, "solverName", "logUserAgent"], (result) => {
     record = result[storageKey] || {};
     let userInfo = {};
     if (result.solverName) { userInfo.solverName = result.solverName }
     if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
     updateRecordMetadata(record, userInfo, puzzle);
-    observerData = createObservers();
-    updateBadgeAndObservers(record, observerData);
+
+    observer = new MutationObserver(puzzleCallback);
+    updateRecordingStatus(record);
   });
 }
