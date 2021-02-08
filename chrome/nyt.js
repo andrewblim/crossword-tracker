@@ -156,6 +156,7 @@ const captureBoardState = function () {
 // Record a batch of events that occur at the same time. Don't record events
 // that would put the event log in a bad state - order the events properly.
 const recordConcurrentEventBatch = function (events, timestamp) {
+  if (events.length == 0) { return; }
   if (!timestamp) { timestamp = new Date().getTime(); }
 
   // Ensure events are added in a consistent order, so that, for example, we
@@ -305,7 +306,9 @@ if (puzzle) {
       observer = new MutationObserver(puzzleCallback);
       updateRecordingStatus(record);
 
-      // Allow interaction with popup
+      // Allow interaction with popup. This generally happens synchronously,
+      // we don't need these to run quickly/in parallel and we would like to
+      // give the user feedback about whether what they did worked or not.
       chrome.runtime.onMessage.addListener(
         function (request, _sender, sendResponse) {
           if (request.action === "ping") {
@@ -314,31 +317,39 @@ if (puzzle) {
             console.log(record);
             sendResponse({ success: true });
           } else if (request.action === "storeRecord") {
-            // service worker manages storage
             chrome.runtime.sendMessage(
               { action: "storeRecord", key: storageKey, record: record },
-              sendResponse,
+              () => {
+                if (chrome.runtime.lastError) {
+                  sendResponse({ success: false, error: chrome.runtime.lastError });
+                } else {
+                  sendResponse({ success: true });
+                }
+                return true; // force synchronous
+              },
             );
           } else if (request.action === "clearRecord") {
-            // service worker manages storage
             chrome.runtime.sendMessage(
               { action: "clearRecord", key: storageKey },
-              sendResponse,
+              () => {
+                if (chrome.runtime.lastError) {
+                  sendResponse({ success: false, error: chrome.runtime.lastError });
+                } else {
+                  sendResponse({ success: true });
+                  record = {};
+                  let userInfo = {};
+                  if (result.solverName) { userInfo.solverName = result.solverName }
+                  if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
+                  updateRecordMetadata(record, userInfo, puzzle);
+                  updateRecordingStatus(record);
+                }
+                return true; // force synchronous
+              },
             );
-            record = {};
-            chrome.storage.sync.get(["solverName", "logUserAgent"], (result) => {
-              let userInfo = {};
-              if (result.solverName) { userInfo.solverName = result.solverName }
-              if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
-              updateRecordMetadata(record, userInfo, puzzle);
-              updateRecordingStatus(record);
-            });
           } else if (request.action === "downloadRecord") {
             sendResponse({ success: true, record });
           }
-          // force synchronous, otherwise calling sendResponse in the callbacks
-          // seems to cause problems
-          return true;
+          return true; // force synchronous
         }
       );
     },

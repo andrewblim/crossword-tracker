@@ -38,11 +38,19 @@ document.getElementById("log-record").addEventListener("click", async () => {
     chrome.tabs.sendMessage(
       tabs[0].id,
       { action: "logRecord" },
-      ({ success }) => {
-        if (success) {
-          updateStatusBar("Logged record to console");
+      (result) => {
+        if (result?.success) {
+          const msg = "Logged record to console";
+          updateStatusBar(msg);
+          console.log(msg);
+        } else if (result?.error) {
+          const msg = `Failed to log record to console. Error: ${result.error}`;
+          updateStatusBar(msg);
+          console.log(msg);
         } else {
-          updateStatusBar("Failed to log record to console");
+          const msg = "Failed to log record to console, unspecified error";
+          updateStatusBar(msg);
+          console.log(msg);
         }
       },
     );
@@ -54,11 +62,19 @@ document.getElementById("store-record").addEventListener("click", async () => {
     chrome.tabs.sendMessage(
       tabs[0].id,
       { action: "storeRecord" },
-      ({ success }) => {
-        if (success) {
-          updateStatusBar("Stored record to browser storage");
+      (result) => {
+        if (result?.success) {
+          const msg = "Stored record to browser storage";
+          updateStatusBar(msg);
+          console.log(msg);
+        } else if (result?.error) {
+          const msg = `Failed to store to browser storage. Error: ${result.error}`;
+          updateStatusBar(msg);
+          console.log(msg);
         } else {
-          updateStatusBar("Failed to store record to browser storage");
+          const msg = "Failed to store to browser storage, unspecified error";
+          updateStatusBar(msg);
+          console.log(msg);
         }
       },
     );
@@ -70,11 +86,19 @@ document.getElementById("clear-record").addEventListener("click", async () => {
     chrome.tabs.sendMessage(
       tabs[0].id,
       { action: "clearRecord" },
-      ({ success }) => {
-        if (success) {
-          updateStatusBar("Cleared record from browser storage");
+      (result) => {
+        if (result?.success) {
+          const msg = "Cleared record from browser storage";
+          updateStatusBar(msg);
+          console.log(msg);
+        } else if (result?.error) {
+          const msg = `Failed to clear from browser storage. Error: ${result.error}`;
+          updateStatusBar(msg);
+          console.log(msg);
         } else {
-          updateStatusBar("Failed to clear record from browser storage");
+          const msg = "Failed to clear from browser storage, unspecified error";
+          updateStatusBar(msg);
+          console.log(msg);
         }
       },
     );
@@ -86,12 +110,20 @@ document.getElementById("download-record").addEventListener("click", async () =>
     chrome.tabs.sendMessage(
       tabs[0].id,
       { action: "downloadRecord" },
-      ({ success, record }) => {
-        if (success) {
-          downloadRecord(record, { filename: suggestedRecordFilename(record) });
-          updateStatusBar("Record download successfully requested");
+      (result) => {
+        if (result?.success) {
+          downloadRecord(result.record, { filename: suggestedRecordFilename(result.record) });
+          const msg = "Record download successfully requested";
+          updateStatusBar(msg);
+          console.log(msg);
+        } else if (result?.error) {
+          const msg = `Failed to download record. Error: ${result.error}`;
+          updateStatusBar(msg);
+          console.log(msg);
         } else {
-          updateStatusBar("Unable to download record");
+          const msg = "Failed to download record, unspecified error";
+          updateStatusBar(msg);
+          console.log(msg);
         }
       },
     );

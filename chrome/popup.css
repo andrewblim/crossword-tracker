@@ -2,9 +2,14 @@ body { width: 250px; }
 
 #interactions {
   display: none;
-  grid-template-columns: auto;
-  gap: 10px;
-  margin: 0px 0px 10px 0px;
+  padding: 10px 0px;
 }
 
-#no-puzzle-message { display: none; }
+#interactions > div {
+  padding: 3px;
+}
+
+#no-puzzle-message {
+  display: none;
+  padding: 10px 0px;
+}
