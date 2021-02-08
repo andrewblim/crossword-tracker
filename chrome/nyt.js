@@ -187,7 +187,7 @@ const recordConcurrentEventBatch = function (events, timestamp) {
   // Don't record anything if we are stopped, unless there is a start event
   // in the event batch. This prevents us from incorrectly creating events
   // if we load a puzzle that already has fill.
-  if (currentlyStopped(record) && events.length > 0 && events[0].type !== "start") {
+  if (currentlyStopped(record) && !currentlyUnstarted(record) && events[0].type !== "start") {
     return;
   }
 

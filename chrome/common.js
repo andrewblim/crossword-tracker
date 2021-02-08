@@ -66,11 +66,16 @@ const suggestedRecordFilename = function(record) {
   }
 }
 
+// Detect if we're in an unstarted state
+const currentlyUnstarted = function(record) {
+  return record.events.length === 0;
+}
+
 // Detect if we're in a "stopped" state after having started. Useful to
 // ensure that we don't record more events without starting
 const currentlyStopped = function(record) {
   return (
-    record.events.length == 0 ||
+    currentlyUnstarted(record) ||
     record.events[record.events.length - 1].type === "stop" ||
     currentlySolved(record)
   );
@@ -80,7 +85,7 @@ const currentlyStopped = function(record) {
 // any events so long as we are in this state, and to control badges.
 const currentlySolved = function(record) {
   return (
-    record.events.length > 0 &&
+    !currentlyUnstarted(record) &&
     record.events[record.events.length - 1].type === "submit" &&
     record.events[record.events.length - 1].success
   );

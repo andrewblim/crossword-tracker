@@ -88,7 +88,7 @@ const buildRow = (rowId, record) => {
   const recordStatus = document.createElement("td");
   if (currentlySolved(record)) {
     recordStatus.textContent = "solved";
-  } else if (record.events.length === 0) {
+  } else if (currentlyUnstarted(record)) {
     recordStatus.textContent = "unstarted";
   } else {
     recordStatus.textContent = "in progress";
@@ -96,7 +96,7 @@ const buildRow = (rowId, record) => {
   row.append(recordStatus);
 
   const recordLastUpdate = document.createElement("td");
-  if (record.events.length > 0) {
+  if (!currentlyUnstarted(record)) {
     recordLastUpdate.textContent = new Date(record.events[record.events.length - 1].timestamp);
   } else {
     recordLastUpdate.textContent = 0;
@@ -154,14 +154,14 @@ const updateRow = (row, record) => {
   const recordStatus = row.children[2];
   if (currentlySolved(record)) {
     recordStatus.textContent = "solved";
-  } else if (record.events.length === 0) {
+  } else if (currentlyUnstarted(record)) {
     recordStatus.textContent = "unstarted";
   } else {
     recordStatus.textContent = "in progress";
   }
 
   const recordLastUpdate = row.children[3];
-  if (record.events.length > 0) {
+  if (!currentlyUnstarted(record)) {
     recordLastUpdate.textContent = new Date(record.events[record.events.length - 1].timestamp);
   } else {
     recordLastUpdate.textContent = "";
