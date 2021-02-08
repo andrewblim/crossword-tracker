@@ -97,3 +97,22 @@ document.getElementById("download-record").addEventListener("click", async () =>
     );
   });
 });
+
+// Only show the buttons if
+
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  chrome.tabs.sendMessage(
+    tabs[0].id,
+    { action: "ping" },
+    (result) => {
+      chrome.runtime.lastError; // prevent "Unchecked runtime.lastError" from showing in logs
+      if (result?.success) {
+        document.getElementById("interactions").style.display = "block";
+        document.getElementById("no-puzzle-message").style.display = "none";
+      } else {
+        document.getElementById("interactions").style.display = "none";
+        document.getElementById("no-puzzle-message").style.display = "block";
+      }
+    },
+  );
+})

@@ -1,9 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <style type="text/css">
-      body { width: 250px; }
-    </style>
+    <link rel="stylesheet" href="popup.css">
   </head>
   <body>
     <div>
@@ -12,10 +10,23 @@
     <div id="solving-as"></div>
     <div id="event-log-level"></div>
     <hr/>
-    <button id="log-record">Log record to console</button>
-    <button id="store-record">Write record to Chrome storage</button>
-    <button id="clear-record">Clear record</button>
-    <button id="download-record">Download record</button>
+    <div id="interactions">
+      <div>
+        <button id="log-record">Log to console</button>
+      </div>
+      <div>
+        <button id="store-record">Put in browser storage</button>
+      </div>
+      <div>
+        <button id="clear-record">Clear</button>
+      </div>
+      <div>
+        <button id="download-record">Download</button>
+      </div>
+    </div>
+    <div id="no-puzzle-message">
+      No puzzle detected on this page.
+    </div>
     <hr/>
     <div>
       <a id="preferences-link" href="#">Preferences</a>

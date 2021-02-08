@@ -28,7 +28,7 @@ const humanizedRecordName = function(record) {
 
 const suggestedRecordFilename = function(record) {
   let url = new URL(record.url);
-  if (url.hostname == "www.nytimes.com") {
+  if (url.hostname === "www.nytimes.com") {
     let stub = url.pathname.replace(/^\/crosswords\/game\//, "").replace(/\//g, "-");
     return `nyt-${stub}.json`;
   } else {

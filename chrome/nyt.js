@@ -273,69 +273,74 @@ const puzzleCallback = function (mutationsList, _observer) {
   recordConcurrentEventBatch(newEvents, timestamp);
 };
 
-// If we navigate away/close tab, record a stop event if we aren't already
-// stopped and write the record out, so that navigating away doesn't result in
-// a loss of recorded info.
-
-window.onbeforeunload = () => {
-  if (!currentlyStopped(record)) { recordConcurrentEventBatch([{ type: "stop" }]); }
-  chrome.runtime.sendMessage({ action: "storeRecord", key: storageKey, record: record });
-};
-
-// Interaction with popup
-
-chrome.runtime.onMessage.addListener(
-  function (request, _sender, sendResponse) {
-    if (request.action === "logRecord") {
-      console.log(record);
-      sendResponse({ success: true });
-    } else if (request.action === "storeRecord") {
-      // service worker manages storage
-      chrome.runtime.sendMessage(
-        { action: "storeRecord", key: storageKey, record: record },
-        sendResponse,
-      );
-    } else if (request.action === "clearRecord") {
-      // service worker manages storage
-      chrome.runtime.sendMessage(
-        { action: "clearRecord", key: storageKey },
-        sendResponse,
-      );
-      record = {};
-      chrome.storage.sync.get(["solverName", "logUserAgent"], (result) => {
-        let userInfo = {};
-        if (result.solverName) { userInfo.solverName = result.solverName }
-        if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
-        updateRecordMetadata(record, userInfo, puzzle);
-        updateRecordingStatus(record);
-      });
-    } else if (request.action === "downloadRecord") {
-      sendResponse({ success: true, record });
-    }
-    // force synchronous, otherwise calling sendResponse in the callbacks
-    // seems to cause problems
-    return true;
-  }
-);
-
 let record, observer;
 let eventFlushFrequency, eventLogLevel;
 
+// Only do anything if we were able to find the puzzle element.
 if (puzzle) {
   chrome.storage.sync.get(
     [storageKey, "solverName", "eventLogLevel", "logUserAgent", "nytSettings"],
     (result) => {
+      // Get event-logging settings
       eventLogLevel = result.eventLogLevel || "full";
       eventFlushFrequency = result.nytSettings?.eventFlushFrequency;
 
+      // Set up a new record variable or get an existing one from storage, then
+      // either way, update with latest info
       record = result[storageKey] || {};
       let userInfo = {};
       if (result.solverName) { userInfo.solverName = result.solverName }
       if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
       updateRecordMetadata(record, userInfo, puzzle);
 
+      // If we navigate away/close tab, record a stop event if we aren't
+      // already stopped and write the record out, so that navigating away
+      // doesn't result in a loss of recorded info.
+      window.onbeforeunload = () => {
+        if (!currentlyStopped(record)) { recordConcurrentEventBatch([{ type: "stop" }]); }
+        chrome.runtime.sendMessage({ action: "storeRecord", key: storageKey, record: record });
+      };
+
+      // Create and start observer
       observer = new MutationObserver(puzzleCallback);
       updateRecordingStatus(record);
+
+      // Allow interaction with popup
+      chrome.runtime.onMessage.addListener(
+        function (request, _sender, sendResponse) {
+          if (request.action === "ping") {
+            sendResponse({ success: true });
+          } else if (request.action === "logRecord") {
+            console.log(record);
+            sendResponse({ success: true });
+          } else if (request.action === "storeRecord") {
+            // service worker manages storage
+            chrome.runtime.sendMessage(
+              { action: "storeRecord", key: storageKey, record: record },
+              sendResponse,
+            );
+          } else if (request.action === "clearRecord") {
+            // service worker manages storage
+            chrome.runtime.sendMessage(
+              { action: "clearRecord", key: storageKey },
+              sendResponse,
+            );
+            record = {};
+            chrome.storage.sync.get(["solverName", "logUserAgent"], (result) => {
+              let userInfo = {};
+              if (result.solverName) { userInfo.solverName = result.solverName }
+              if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
+              updateRecordMetadata(record, userInfo, puzzle);
+              updateRecordingStatus(record);
+            });
+          } else if (request.action === "downloadRecord") {
+            sendResponse({ success: true, record });
+          }
+          // force synchronous, otherwise calling sendResponse in the callbacks
+          // seems to cause problems
+          return true;
+        }
+      );
     },
   );
 }

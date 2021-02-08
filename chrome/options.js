@@ -149,10 +149,10 @@ const buildRow = (rowId, record) => {
     if (verify) {
       chrome.storage.sync.remove(rowId, () => {
         if (chrome.runtime.lastError) {
-          msg = `Failed to remove key ${rowId}: ${chrome.runtime.lastError}`
+          const msg = `Failed to remove key ${rowId}: ${chrome.runtime.lastError}`
           console.log(msg);
         } else {
-          msg = `Removed ${linktext}`
+          const msg = `Removed ${linktext}`
           console.log(msg);
         }
       });
