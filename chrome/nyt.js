@@ -156,7 +156,7 @@ const captureBoardState = function () {
 // Record a batch of events that occur at the same time. Don't record events
 // that would put the event log in a bad state - order the events properly.
 const recordConcurrentEventBatch = function (events, timestamp) {
-  if (events.length == 0) { return; }
+  if (events.length === 0) { return; }
   if (!timestamp) { timestamp = new Date().getTime(); }
 
   // Ensure events are added in a consistent order, so that, for example, we
@@ -183,18 +183,28 @@ const recordConcurrentEventBatch = function (events, timestamp) {
 
   for (const event of events) {
     record.events.push({ ...event, timestamp });
-    let successfulSubmit = event.type === "submit" && event.success;
-    let timeToRecord;
-    if (eventFlushFrequency) {
-      timeToRecord = record.events.length % eventFlushFrequency === 0;
-    }
-    if (successfulSubmit || timeToRecord) {
-      chrome.runtime.sendMessage({ action: "storeRecord", key: storageKey, record: record });
-    }
-    if (successfulSubmit) {
-      observer.disconnect();
-      chrome.runtime.sendMessage({ action: "setBadgeSolved" });
-    }
+  }
+
+  // store the record on stoppages, submits, or just if it's been a while
+  const lastEvent = events[events.length - 1];
+  let stoppage = lastEvent.type === "stop";
+  let successfulSubmit = lastEvent.type === "submit" && lastEvent.success;
+  let timeToRecord;
+  if (eventFlushFrequency) {
+    eventsSinceLastFlush += events.length;
+    timeToRecord = eventsSinceLastFlush >= eventFlushFrequency;
+  }
+  if (stoppage || successfulSubmit || timeToRecord) {
+    chrome.runtime.sendMessage(
+      { action: "storeRecord", key: storageKey, record },
+      (result) => {
+        if (result && result.success) { eventsSinceLastFlush = 0; }
+      },
+    );
+  }
+  if (successfulSubmit) {
+    observer.disconnect();
+    chrome.runtime.sendMessage({ action: "setBadgeSolved" });
   }
 };
 
@@ -276,6 +286,7 @@ const puzzleCallback = function (mutationsList, _observer) {
 
 let record, observer;
 let eventFlushFrequency, eventLogLevel;
+let eventsSinceLastFlush = 0;
 
 // Only do anything if we were able to find the puzzle element.
 if (puzzle) {
@@ -296,10 +307,16 @@ if (puzzle) {
 
       // If we navigate away/close tab, record a stop event if we aren't
       // already stopped and write the record out, so that navigating away
-      // doesn't result in a loss of recorded info.
+      // doesn't result in a loss of recorded info. (Don't bother if we
+      // no events, as otherwise we might save a bunch more records by
+      // someone simply visting old solved puzzles.)
       window.onbeforeunload = () => {
-        if (!currentlyStopped(record)) { recordConcurrentEventBatch([{ type: "stop" }]); }
-        chrome.runtime.sendMessage({ action: "storeRecord", key: storageKey, record: record });
+        if (!currentlyStopped(record) && !currentlyUnstarted(record)) {
+          recordConcurrentEventBatch([{ type: "stop" }]);
+          chrome.runtime.sendMessage(
+            { action: "storeRecord", key: storageKey, record: record },
+          );
+        }
       };
 
       // Create and start observer
@@ -324,6 +341,7 @@ if (puzzle) {
                   sendResponse({ success: false, error: chrome.runtime.lastError });
                 } else {
                   sendResponse({ success: true });
+                  eventsSinceLastFlush = 0;
                 }
                 return true; // force synchronous
               },
