@@ -25,9 +25,11 @@ body {
   font-weight: bold;
 }
 
-table {
+.options-set > table {
+  grid-column: span 2;
   margin: 5px auto 25px auto;
   border-collapse: collapse;
+  width: 100%;
 }
 
 th {

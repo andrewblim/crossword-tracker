@@ -149,10 +149,12 @@ const buildRow = (rowId, record) => {
     if (verify) {
       chrome.storage.sync.remove(rowId, () => {
         if (chrome.runtime.lastError) {
-          const msg = `Failed to remove key ${rowId}: ${chrome.runtime.lastError}`
+          const msg = `Failed to remove record "${linktext}" ${chrome.runtime.lastError}`
+          document.getElementById("record-listing-message").textContent = msg;
           console.log(msg);
         } else {
-          const msg = `Removed ${linktext}`
+          const msg = `Removed record "${linktext}"`
+          document.getElementById("record-listing-message").textContent = msg;
           console.log(msg);
         }
       });
@@ -234,9 +236,13 @@ document.getElementById("delete-all-records").addEventListener("click", () => {
       let recordKeys = Object.keys(result).filter(k => k.startsWith("record-"));
       chrome.storage.sync.remove(recordKeys, () => {
         if (chrome.runtime.lastError) {
-          console.log(`Failed to remove keys ${recordKeys}: ${chrome.runtime.lastError}`);
+          const msg = `Failed to remove all records: ${chrome.runtime.lastError}`;
+          document.getElementById("record-listing-message").textContent = msg;
+          console.log(msg);
         } else {
-          console.log(`Removed key ${recordKeys}`);
+          const msg = "Removed all records";
+          document.getElementById("record-listing-message").textContent = msg;
+          console.log(msg);
         }
       });
     });

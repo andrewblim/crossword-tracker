@@ -54,7 +54,7 @@
             <input type="text" id="nyt-eventFlushFrequency"></input>
           </div>
           <div>
-            The frequency with which to auto-save event logs while solving. (Note that event logs are always saved on solve or when leaving the page anyway.) Every this-many events, we will save progress automatically. Leave blank for no auto-save.
+            The frequency with which to auto-save event logs to browser storage while solving. (This is purely precautionary, because event logs are automatically saved anyway when solving or stopping the puzzle.) Every this-many events, we will save. Leave blank for no auto-save.
           </div>
         </div>
         <div class="options-set">
@@ -67,25 +67,31 @@
       </div>
       <div class="options-section">
         <h2>Record management</h2>
-        <table id="record-listing">
-          <colgroup>
-            <col style="width: 30%"/>
-            <col style="width: 10%;"/>
-            <col style="width: 10%"/>
-            <col style="width: 30%"/>
-            <col style="width: 20%;"/>
-          </colgroup>
-          <thead>
-            <th>Name</th>
-            <th>Version</th>
-            <th>Status</th>
-            <th>Last event</th>
-            <th>Management</th>
-          </thead>
-          <tbody id="record-entries">
-          </tbody>
-        </table>
-        <button id="delete-all-records">Delete all records</button>
+        <div class="options-set">
+          <table id="record-listing">
+            <colgroup>
+              <col style="width: 30%"/>
+              <col style="width: 10%;"/>
+              <col style="width: 10%"/>
+              <col style="width: 30%"/>
+              <col style="width: 20%;"/>
+            </colgroup>
+            <thead>
+              <th>Name</th>
+              <th>Version</th>
+              <th>Status</th>
+              <th>Last event time</th>
+              <th>Management</th>
+            </thead>
+            <tbody id="record-entries">
+            </tbody>
+          </table>
+          <div>
+            <button id="delete-all-records">Delete all records</button>
+          </div>
+          <div id="record-listing-message">
+          </div>
+        </div>
       </div>
     </div>
   </body>
