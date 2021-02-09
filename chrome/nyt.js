@@ -347,23 +347,30 @@ if (puzzle) {
               },
             );
           } else if (request.action === "clearRecord") {
-            chrome.runtime.sendMessage(
-              { action: "clearRecord", key: storageKey },
-              () => {
-                if (chrome.runtime.lastError) {
-                  sendResponse({ success: false, error: chrome.runtime.lastError });
-                } else {
-                  sendResponse({ success: true });
-                  record = {};
-                  let userInfo = {};
-                  if (result.solverName) { userInfo.solverName = result.solverName }
-                  if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
-                  updateRecordMetadata(record, userInfo, puzzle);
-                  updateRecordingStatus(record);
-                }
-                return true; // force synchronous
-              },
-            );
+            const verify = confirm(
+              "Are you sure you want to clear this record? This will eliminate " +
+              "event history and treat the current state of the puzzle as the " +
+              "new initial state.",
+            )
+            if (verify) {
+              chrome.runtime.sendMessage(
+                { action: "clearRecord", key: storageKey },
+                () => {
+                  if (chrome.runtime.lastError) {
+                    sendResponse({ success: false, error: chrome.runtime.lastError });
+                  } else {
+                    sendResponse({ success: true });
+                    record = {};
+                    let userInfo = {};
+                    if (result.solverName) { userInfo.solverName = result.solverName }
+                    if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
+                    updateRecordMetadata(record, userInfo, puzzle);
+                    updateRecordingStatus(record);
+                  }
+                  return true; // force synchronous
+                },
+              );
+              }
           } else if (request.action === "downloadRecord") {
             sendResponse({ success: true, record });
           }
