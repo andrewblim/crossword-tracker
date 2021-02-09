@@ -31,7 +31,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   switch (request.action) {
-    case "storeRecord":
+    case "cacheRecord":
       if (request.key !== undefined && request.record !== undefined) {
         chrome.storage.sync.set({ [request.key]: request.record }, () => {
           if (chrome.runtime.lastError) {

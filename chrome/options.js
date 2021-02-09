@@ -149,11 +149,11 @@ const buildRow = (rowId, record) => {
     if (verify) {
       chrome.storage.sync.remove(rowId, () => {
         if (chrome.runtime.lastError) {
-          const msg = `Failed to remove record "${linktext}" ${chrome.runtime.lastError}`
+          const msg = `Failed to delete record "${linktext}" ${chrome.runtime.lastError}`
           document.getElementById("record-listing-message").textContent = msg;
           console.log(msg);
         } else {
-          const msg = `Removed record "${linktext}"`
+          const msg = `Delete record "${linktext}"`
           document.getElementById("record-listing-message").textContent = msg;
           console.log(msg);
         }
@@ -230,17 +230,17 @@ chrome.storage.onChanged.addListener((changes, _namespace) => {
 });
 
 document.getElementById("delete-all-records").addEventListener("click", () => {
-  let verify = confirm("Are you sure you want to delete all stored records? This cannot be undone.");
+  let verify = confirm("Are you sure you want to delete all cached records? This cannot be undone.");
   if (verify) {
     chrome.storage.sync.get(null, (result) => {
       let recordKeys = Object.keys(result).filter(k => k.startsWith("record-"));
       chrome.storage.sync.remove(recordKeys, () => {
         if (chrome.runtime.lastError) {
-          const msg = `Failed to remove all records: ${chrome.runtime.lastError}`;
+          const msg = `Failed to delete all records: ${chrome.runtime.lastError}`;
           document.getElementById("record-listing-message").textContent = msg;
           console.log(msg);
         } else {
-          const msg = "Removed all records";
+          const msg = "Deleted all records";
           document.getElementById("record-listing-message").textContent = msg;
           console.log(msg);
         }

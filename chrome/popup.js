@@ -57,22 +57,22 @@ document.getElementById("log-record").addEventListener("click", async () => {
   });
 });
 
-document.getElementById("store-record").addEventListener("click", async () => {
+document.getElementById("cache-record").addEventListener("click", async () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     chrome.tabs.sendMessage(
       tabs[0].id,
-      { action: "storeRecord" },
+      { action: "cacheRecord" },
       (result) => {
         if (result?.success) {
-          const msg = "Stored record to browser storage";
+          const msg = "Cached record to browser storage";
           updateStatusBar(msg);
           console.log(msg);
         } else if (result?.error) {
-          const msg = `Failed to store to browser storage. Error: ${result.error}`;
+          const msg = `Failed to cache to browser storage. Error: ${result.error}`;
           updateStatusBar(msg);
           console.log(msg);
         } else {
-          const msg = "Failed to store to browser storage, unspecified error";
+          const msg = "Failed to cache to browser storage, unspecified error";
           updateStatusBar(msg);
           console.log(msg);
         }
@@ -81,27 +81,34 @@ document.getElementById("store-record").addEventListener("click", async () => {
   });
 });
 
-document.getElementById("clear-record").addEventListener("click", async () => {
+document.getElementById("clear-and-reset-record").addEventListener("click", async () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.sendMessage(
-      tabs[0].id,
-      { action: "clearRecord" },
-      (result) => {
-        if (result?.success) {
-          const msg = "Cleared record from browser storage";
-          updateStatusBar(msg);
-          console.log(msg);
-        } else if (result?.error) {
-          const msg = `Failed to clear from browser storage. Error: ${result.error}`;
-          updateStatusBar(msg);
-          console.log(msg);
-        } else {
-          const msg = "Failed to clear from browser storage, unspecified error";
-          updateStatusBar(msg);
-          console.log(msg);
-        }
-      },
-    );
+    const verify = confirm(
+      "Are you sure you want to clear and reset this record? This will clear " +
+      "your event history and treat the current state of the puzzle as the " +
+      "new initial state.",
+    )
+    if (verify) {
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        { action: "clearAndResetRecord" },
+        (result) => {
+          if (result?.success) {
+            const msg = "Cleared record from browser storage and reset tracking";
+            updateStatusBar(msg);
+            console.log(msg);
+          } else if (result?.error) {
+            const msg = `Failed to clear from browser storage and reset tracking. Error: ${result.error}`;
+            updateStatusBar(msg);
+            console.log(msg);
+          } else {
+            const msg = "Failed to clear from browser storage and reset tracking, unspecified error";
+            updateStatusBar(msg);
+            console.log(msg);
+          }
+        },
+      );
+    }
   });
 });
 
@@ -109,7 +116,7 @@ document.getElementById("download-record").addEventListener("click", async () =>
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     chrome.tabs.sendMessage(
       tabs[0].id,
-      { action: "downloadRecord" },
+      { action: "getRecord" },
       (result) => {
         if (result?.success) {
           downloadRecord(result.record, { filename: suggestedRecordFilename(result.record) });

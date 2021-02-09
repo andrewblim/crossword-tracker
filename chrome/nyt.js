@@ -185,7 +185,7 @@ const recordConcurrentEventBatch = function (events, timestamp) {
     record.events.push({ ...event, timestamp });
   }
 
-  // store the record on stoppages, submits, or just if it's been a while
+  // cache the record on stoppages, submits, or just if it's been a while
   const lastEvent = events[events.length - 1];
   let stoppage = lastEvent.type === "stop";
   let successfulSubmit = lastEvent.type === "submit" && lastEvent.success;
@@ -196,7 +196,7 @@ const recordConcurrentEventBatch = function (events, timestamp) {
   }
   if (stoppage || successfulSubmit || timeToRecord) {
     chrome.runtime.sendMessage(
-      { action: "storeRecord", key: storageKey, record },
+      { action: "cacheRecord", key: storageKey, record },
       (result) => {
         if (result && result.success) { eventsSinceLastFlush = 0; }
       },
@@ -305,16 +305,14 @@ if (puzzle) {
       if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
       updateRecordMetadata(record, userInfo, puzzle);
 
-      // If we navigate away/close tab, record a stop event if we aren't
-      // already stopped and write the record out, so that navigating away
-      // doesn't result in a loss of recorded info. (Don't bother if we
-      // no events, as otherwise we might save a bunch more records by
-      // someone simply visting old solved puzzles.)
+      // If we navigate away/close tab, and there has been at least one event,
+      // record a stop event if we aren't already stopped and cache the record
+      // so that we don't lose progress.
       window.onbeforeunload = () => {
         if (!currentlyStopped(record) && !currentlyUnstarted(record)) {
           recordConcurrentEventBatch([{ type: "stop" }]);
           chrome.runtime.sendMessage(
-            { action: "storeRecord", key: storageKey, record: record },
+            { action: "cacheRecord", key: storageKey, record: record },
           );
         }
       };
@@ -330,12 +328,14 @@ if (puzzle) {
         function (request, _sender, sendResponse) {
           if (request.action === "ping") {
             sendResponse({ success: true });
+          } else if (request.action === "getRecord") {
+            sendResponse({ success: true, record });
           } else if (request.action === "logRecord") {
             console.log(record);
             sendResponse({ success: true });
-          } else if (request.action === "storeRecord") {
+          } else if (request.action === "cacheRecord") {
             chrome.runtime.sendMessage(
-              { action: "storeRecord", key: storageKey, record: record },
+              { action: "cacheRecord", key: storageKey, record: record },
               () => {
                 if (chrome.runtime.lastError) {
                   sendResponse({ success: false, error: chrome.runtime.lastError });
@@ -346,33 +346,24 @@ if (puzzle) {
                 return true; // force synchronous
               },
             );
-          } else if (request.action === "clearRecord") {
-            const verify = confirm(
-              "Are you sure you want to clear this record? This will eliminate " +
-              "event history and treat the current state of the puzzle as the " +
-              "new initial state.",
-            )
-            if (verify) {
-              chrome.runtime.sendMessage(
-                { action: "clearRecord", key: storageKey },
-                () => {
-                  if (chrome.runtime.lastError) {
-                    sendResponse({ success: false, error: chrome.runtime.lastError });
-                  } else {
-                    sendResponse({ success: true });
-                    record = {};
-                    let userInfo = {};
-                    if (result.solverName) { userInfo.solverName = result.solverName }
-                    if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
-                    updateRecordMetadata(record, userInfo, puzzle);
-                    updateRecordingStatus(record);
-                  }
-                  return true; // force synchronous
-                },
-              );
-              }
-          } else if (request.action === "downloadRecord") {
-            sendResponse({ success: true, record });
+          } else if (request.action === "clearAndResetRecord") {
+            chrome.runtime.sendMessage(
+              { action: "clearRecord", key: storageKey },
+              () => {
+                if (chrome.runtime.lastError) {
+                  sendResponse({ success: false, error: chrome.runtime.lastError });
+                } else {
+                  sendResponse({ success: true });
+                  record = {};
+                  let userInfo = {};
+                  if (result.solverName) { userInfo.solverName = result.solverName }
+                  if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
+                  updateRecordMetadata(record, userInfo, puzzle);
+                  updateRecordingStatus(record);
+                }
+                return true; // force synchronous
+              },
+            );
           }
           return true; // force synchronous
         }
