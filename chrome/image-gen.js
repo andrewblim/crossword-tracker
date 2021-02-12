@@ -71,8 +71,8 @@ const createSolveAnimation = function(record) {
   complete.setAttribute("y", height - margin);
   complete.setAttribute("text-anchor", "end");
   complete.setAttribute("style", `font-size: ${progressFontSize}px; font-family: sans-serif; font-weight: bold`);
+  complete.setAttribute("visibility", "hidden");
   complete.textContent = "Complete!";
-  // TODO: make only visible on solve
 
   const timer = document.createElementNS(svgNS, "text");
   timer.setAttribute("x", margin);
@@ -112,6 +112,7 @@ const createSolveAnimation = function(record) {
 
   const squaresByPosition = {}
   const fillByPosition = {}
+  const positionsByLabel = {}
   for (const sq of record["initialState"]) {
     const square = document.createElementNS(svgNS, "rect");
     const squareX = margin + sq.x * sqSize;
@@ -147,11 +148,38 @@ const createSolveAnimation = function(record) {
       label.setAttribute("y", squareY + 0.1 * sqSize);
       label.textContent = sq.label;
       labelsG.append(label);
+      positionsByLabel[sq.label] = posKey;
     }
   }
 
-  // Add animations for puzzle
-  let currentlySelected;
+  // Clues - add as hidden text, and during animation we reveal whatever is
+  // currently selected
+
+  const cluesFontSize = (nRows * sqSize) * 0.05;
+  const cluesG = document.createElementNS(svgNS, "g");
+  cluesG.setAttribute("style", `font-size: ${cluesFontSize}px; font-family: sans-serif`);
+  cluesG.setAttribute("text-anchor", "middle");
+  cluesG.setAttribute("dominant-baseline", "hanging");
+  cluesG.setAttribute("visibility", "hidden");
+  const cluesByLabel = {}
+  for (const clueSection of Object.keys(record.clueSections)) {
+    for (const clueInfo of record.clueSections[clueSection]) {
+      const clue = document.createElementNS(svgNS, "text");
+      clue.setAttribute("x", width / 2);
+      clue.setAttribute("y", margin + topOffset + sqSize * nRows + cluesFontSize * 2);
+      clue.textContent = `${clueInfo.label}. ${clueInfo.text}`
+      // TODO: adjust sizing on long clues
+      cluesG.append(clue);
+      if (cluesByLabel[clueSection] === undefined) {
+        cluesByLabel[clueSection] = {};
+      }
+      cluesByLabel[clueSection][clueInfo.label] = clue;
+    }
+  }
+
+  // Animations for puzzle
+
+  let currentlySelected, currentlySelectedClue;
   if (record.events.length > 0) {
     const startTime = record.events[0].timestamp;
     for (const event of record.events) {
@@ -195,6 +223,27 @@ const createSolveAnimation = function(record) {
           squaresByPosition[posKey].append(newSelectSet);
           currentlySelected = posKey;
           break;
+        case "selectClue":
+          if (currentlySelectedClue) {
+            currentlySelectedClue.children[currentlySelectedClue.children.length - 1]
+              .setAttribute("end", time);
+          }
+          const newSelectClueSet = document.createElementNS(svgNS, "set");
+          newSelectClueSet.setAttribute("attributeName", "visibility");
+          newSelectClueSet.setAttribute("to", "visible");
+          newSelectClueSet.setAttribute("begin", time);
+          cluesByLabel[event.clueSection][event.clueLabel].append(newSelectClueSet);
+          currentlySelectedClue = cluesByLabel[event.clueSection][event.clueLabel];
+          break;
+        case "submit":
+          if (event.success) {
+            const newSubmitSet = document.createElementNS(svgNS, "set");
+            newSubmitSet.setAttribute("attributeName", "visibility");
+            newSubmitSet.setAttribute("to", "visible");
+            newSubmitSet.setAttribute("begin", time);
+            complete.append(newSubmitSet);
+            break;
+          }
       }
     }
   }
@@ -207,6 +256,7 @@ const createSolveAnimation = function(record) {
   svg.append(timer);
   svg.append(complete);
   svg.append(squaresG);
+  svg.append(cluesG);
   svg.append(labelsG);
   svg.append(fillG);
   document.getElementById("container").append(svg);
