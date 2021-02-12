@@ -134,11 +134,21 @@ const buildRow = (rowId, record) => {
 
   const recordManagement = document.createElement("td");
   const recordDownloadButton = document.createElement("button");
-  recordDownloadButton.textContent = "Download";
+  recordDownloadButton.textContent = "Download JSON";
   recordDownloadButton.addEventListener("click", () => {
     chrome.storage.sync.get(rowId, (result) => {
       if (result[rowId]) {
         downloadRecord(result[rowId], { filename: suggestedRecordFilename(result[rowId]) });
+      }
+    });
+  });
+  const recordDownloadImageButton = document.createElement("button");
+  recordDownloadImageButton.textContent = "Download SVG";
+  recordDownloadImageButton.addEventListener("click", () => {
+    chrome.storage.sync.get(rowId, (result) => {
+      if (result[rowId]) {
+        // TODO: better default filename
+        createSolveAnimation(result[rowId]);
       }
     });
   });
@@ -161,6 +171,7 @@ const buildRow = (rowId, record) => {
     }
   });
   recordManagement.append(recordDownloadButton);
+  recordManagement.append(recordDownloadImageButton);
   recordManagement.append(recordDeleteButton);
   row.append(recordManagement);
 
