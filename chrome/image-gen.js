@@ -65,7 +65,7 @@ const createSolveAnimation = function(record) {
 
   // Puzzle-complete indicator below puzzle
 
-  const progressFontSize = (width - 2 * margin) * 0.0375;
+  const progressFontSize = (width - 2 * margin) * 0.05;
   let complete = document.createElementNS(svgNS, "text");
   complete.setAttribute("x", width - margin);
   complete.setAttribute("y", height - margin);
@@ -171,7 +171,7 @@ const createSolveAnimation = function(record) {
 
   // Animations for puzzle
 
-  let timerG;
+  let timer;
   let currentlySelected, currentlySelectedClue;
   if (record.events.length > 0) {
     const startTime = record.events[0].timestamp;
@@ -253,65 +253,72 @@ const createSolveAnimation = function(record) {
       }
 
       // Timer below puzzle. This is super janky; I don't think I can make
-      // <text> content change with pure SVG, so we create all possible minute
-      // and hour text boxes and make them visible and not as needed.
+      // <text> or <tspan> content change with pure SVG, so we create all
+      // possible minute and hour text boxes and make them visible and not as
+      // needed. (Use display: none/inline for visibility so that the hidden
+      // times don't take up space.)
+
+      timer = document.createElementNS(svgNS, "text");
+      timer.setAttribute("style", `font-size: ${progressFontSize}px; font-family: sans-serif; font-weight: bold`);
+      timer.setAttribute("x", margin);
+      timer.setAttribute("y", height - margin);
 
       const lastTime = record.events[record.events.length - 1].timestamp;
       const totalTime = lastTime - startTime - cumulativeStopped;
       const maxMinutes = Math.round(totalTime / 60000);
       const maxSeconds = Math.min(Math.round(totalTime / 1000), 59);
-      timerG = document.createElementNS(svgNS, "g");
-      timerG.setAttribute("style", `font-size: ${progressFontSize}px; font-family: sans-serif; font-weight: bold`);
-      timerG.setAttribute("visibility", "hidden");
 
-      let minutesPossible = [];
+      let minutes = [];
       for (let i = 0; i <= maxMinutes; i++) {
-        const minutePossible = document.createElementNS(svgNS, "text");
-        minutePossible.setAttribute("x", margin + progressFontSize * 4);
-        minutePossible.setAttribute("y", height - margin);
-        minutePossible.setAttribute("text-anchor", "end");
-        minutePossible.textContent = i;
-        timerG.append(minutePossible);
-        minutesPossible.push(minutePossible);
+        const minute = document.createElementNS(svgNS, "tspan");
+        minute.setAttribute("display", "none");
+        minute.textContent = `${i}`;
+        timer.append(minute);
+        minutes.push(minute);
       }
 
-      let secondsPossible = [];
+      const msSeparator = document.createElementNS(svgNS, "tspan");
+      msSeparator.textContent = ":";
+      timer.append(msSeparator);
+
+      let seconds = [];
       for (let i = 0; i <= maxSeconds; i++) {
-        const secondPossible = document.createElementNS(svgNS, "text");
-        secondPossible.setAttribute("x", margin + progressFontSize * 4);
-        secondPossible.setAttribute("y", height - margin);
+        const second = document.createElementNS(svgNS, "tspan");
+        second.setAttribute("display", "none");
         if (i < 10) {
-          secondPossible.textContent = `:0${i}`;
+          second.textContent = `0${i}`;
         } else {
-          secondPossible.textContent = `:${i}`;
+          second.textContent = `${i}`;
         }
-        timerG.append(secondPossible);
-        secondsPossible.push(secondPossible);
+        timer.append(second);
+        seconds.push(second);
       }
 
       for (let i = 0; i <= totalTime / 1000; i++) {
         const tickMS = `${i * 1000 / animationSpeed}ms`;
         if (i % 60 === 0) {
           if (i > 0) {
-            const prevMinute = minutesPossible[Math.round(i / 60) - 1];
+            const prevMinute = minutes[Math.round(i / 60) - 1];
             prevMinute.children[prevMinute.children.length - 1].setAttribute("end", tickMS);
           }
+          const minute = minutes[Math.round(i / 60)];
           const newMinuteSet = document.createElementNS(svgNS, "set");
-          newMinuteSet.setAttribute("attributeName", "visibility");
-          newMinuteSet.setAttribute("to", "visible");
+          newMinuteSet.setAttribute("attributeName", "display");
+          newMinuteSet.setAttribute("to", "inline");
           newMinuteSet.setAttribute("begin", tickMS);
-          minutesPossible[Math.round(i / 60)].append(newMinuteSet);
+          minute.append(newMinuteSet);
         }
 
         if (i > 0) {
-          const prevSecond = secondsPossible[(i - 1) % 60];
+          const prevSecond = seconds[(i - 1) % 60];
           prevSecond.children[prevSecond.children.length - 1].setAttribute("end", tickMS);
         }
+        const second = seconds[i % 60];
         const newSecondSet = document.createElementNS(svgNS, "set");
-        newSecondSet.setAttribute("attributeName", "visibility");
-        newSecondSet.setAttribute("to", "visible");
+        newSecondSet.setAttribute("attributeName", "display");
+        newSecondSet.setAttribute("to", "inline");
         newSecondSet.setAttribute("begin", tickMS);
-        secondsPossible[i % 60].append(newSecondSet);
+        second.append(newSecondSet);
       }
     }
   }
@@ -323,7 +330,7 @@ const createSolveAnimation = function(record) {
   svg.append(titleAndDate);
   svg.append(byline);
   svg.append(solver);
-  if (timerG !== undefined) { svg.append(timerG); }
+  if (timer !== undefined) { svg.append(timer); }
   svg.append(complete);
   svg.append(squaresG);
   svg.append(cluesG);
