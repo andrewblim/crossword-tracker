@@ -1,8 +1,28 @@
 "use strict";
 
-const createSolveAnimation = function(record) {
-  const svgNS = "http://www.w3.org/2000/svg";
+const svgNS = "http://www.w3.org/2000/svg";
 
+// We do puzzle animations by adding <set> children to elements to control when
+// they appear and disappear (typically toggling either "visibility" or
+// "display"). These are helper functions for that. They assume that the
+// elements in question only have <set> elements and that only the latest one
+// ever has no "end" attribute, which suffices for our purposes.
+
+const beginSetChild = function(elem, attributeName, to, begin) {
+  const newSet = document.createElementNS(svgNS, "set");
+  newSet.setAttribute("attributeName", attributeName);
+  newSet.setAttribute("to", to);
+  newSet.setAttribute("begin", begin);
+  elem.append(newSet);
+}
+
+const endSetChild = function(elem, end) {
+  if (elem.children.length > 0) {
+    elem.children[elem.children.length - 1].setAttribute("end", end);
+  }
+}
+
+const createSolveAnimation = function(record) {
   // TODO: make these settable and validated
   const width = 500;
   const height = 700;
@@ -12,6 +32,7 @@ const createSolveAnimation = function(record) {
   const fillableColor = "white";
   const unfillableColor = "black";
   const selectedColor = "yellow";
+  const highlightedColor = "lightblue";
   const animationSpeed = 1.0;
 
   document.getElementById("solve-animation")?.remove();
@@ -123,11 +144,7 @@ const createSolveAnimation = function(record) {
         fill.setAttribute("x", squareX + 0.5 * sqSize);
         fill.setAttribute("y", squareY + 0.8 * sqSize);
         fill.textContent = sq.fill;
-        const newSet = document.createElementNS(svgNS, "set");
-        newSet.setAttribute("attributeName", "visibility");
-        newSet.setAttribute("to", "visible");
-        newSet.setAttribute("begin", 0);
-        fill.append(newSet);
+        beginSetChild(fill, "visibility", "visible", 0);
         fillG.append(fill);
         fillByPosition[posKey] = fill;
       }
@@ -141,7 +158,7 @@ const createSolveAnimation = function(record) {
       label.setAttribute("y", squareY + 0.1 * sqSize);
       label.textContent = sq.label;
       labelsG.append(label);
-      positionsByLabel[sq.label] = posKey;
+      positionsByLabel[sq.label] = { x: sq.x, y: sq.y };
     }
   }
 
@@ -150,13 +167,18 @@ const createSolveAnimation = function(record) {
 
   const cluesFontSize = (nRows * sqSize) * 0.05;
   const cluesG = document.createElementNS(svgNS, "g");
+  const acrossClueSection = "Across";
+  const downClueSection = "Down";
   cluesG.setAttribute("style", `font-size: ${cluesFontSize}px; font-family: sans-serif`);
   cluesG.setAttribute("text-anchor", "middle");
   cluesG.setAttribute("dominant-baseline", "hanging");
   cluesG.setAttribute("visibility", "hidden");
-  const cluesByLabel = {}
+  const cluesByLabel = {};
+  const positionsByClue = {};
   for (const clueSection of Object.keys(record.clueSections)) {
+    positionsByClue[clueSection] = {};
     for (const clueInfo of record.clueSections[clueSection]) {
+      // add clue text
       const clue = document.createElementNS(svgNS, "text");
       clue.setAttribute("x", width / 2);
       clue.setAttribute("y", margin + topOffset + sqSize * nRows + cluesFontSize * 2);
@@ -166,13 +188,34 @@ const createSolveAnimation = function(record) {
         cluesByLabel[clueSection] = {};
       }
       cluesByLabel[clueSection][clueInfo.label] = clue;
+
+      // add positions associated with each clue, which we'll refer to later
+      // when highlighting selected clues
+      const positions = [];
+      let { x, y } = positionsByLabel[clueInfo.label];
+      if (clueSection === acrossClueSection) {
+        let sq = squaresByPosition[`${x}-${y}`];
+        while (x < nCols && sq.getAttribute("fill") !== unfillableColor) {
+          positions.push({ x, y });
+          x += 1;
+          sq = squaresByPosition[`${x}-${y}`];
+        }
+      } else if (clueSection === downClueSection) {
+        let sq = squaresByPosition[`${x}-${y}`];
+        while (y < nRows && sq.getAttribute("fill") !== unfillableColor) {
+          positions.push({ x, y });
+          y += 1;
+          sq = squaresByPosition[`${x}-${y}`];
+        }
+      }
+      positionsByClue[clueSection][clueInfo.label] = positions;
     }
   }
 
   // Animations for puzzle
 
   let timer;
-  let currentlySelected, currentlySelectedClue;
+  let selectedSquare, selectedClue, highlightedSquares;
   if (record.events.length > 0) {
     const startTime = record.events[0].timestamp;
     let lastStoppedTime = 0, currentlyStopped = true, cumulativeStopped = 0;
@@ -184,6 +227,7 @@ const createSolveAnimation = function(record) {
       const time = (event.timestamp - startTime - cumulativeStopped) / animationSpeed;
       const timeMS = `${time}ms`;
       let posKey;
+      console.log(event);
       switch (event.type) {
         case "update":
           posKey = `${event.x}-${event.y}`;
@@ -200,40 +244,51 @@ const createSolveAnimation = function(record) {
             fill.setAttribute("x", squareX + 0.5 * sqSize);
             fill.setAttribute("y", squareY + 0.8 * sqSize);
             fill.textContent = event.fill;
-            const newUpdateSet = document.createElementNS(svgNS, "set");
-            newUpdateSet.setAttribute("attributeName", "visibility");
-            newUpdateSet.setAttribute("to", "visible");
-            newUpdateSet.setAttribute("begin", timeMS);
-            fill.append(newUpdateSet);
+            beginSetChild(fill, "visibility", "visible", timeMS);
             fillG.append(fill);
             fillByPosition[posKey] = fill;
           }
           break;
         case "select":
-          if (currentlySelected) {
-            squaresByPosition[currentlySelected]
-              .children[squaresByPosition[currentlySelected].children.length - 1]
-              .setAttribute("end", timeMS);
+          if (selectedSquare) {
+            endSetChild(selectedSquare, timeMS);
+            // switch it to the highlight color if it was deselected but should
+            // still be highlighted
+            for (const { x, y } of (highlightedSquares || [])) {
+              if (squaresByPosition[`${x}-${y}`] === selectedSquare) {
+                beginSetChild(selectedSquare, "fill", highlightedColor, timeMS);
+                break;
+              }
+            }
           }
           posKey = `${event.x}-${event.y}`;
-          const newSelectSet = document.createElementNS(svgNS, "set");
-          newSelectSet.setAttribute("attributeName", "fill");
-          newSelectSet.setAttribute("to", selectedColor);
-          newSelectSet.setAttribute("begin", timeMS);
-          squaresByPosition[posKey].append(newSelectSet);
-          currentlySelected = posKey;
+          endSetChild(squaresByPosition[posKey], timeMS);
+          beginSetChild(squaresByPosition[posKey], "fill", selectedColor, timeMS);
+          selectedSquare = squaresByPosition[posKey];
           break;
         case "selectClue":
-          if (currentlySelectedClue) {
-            currentlySelectedClue.children[currentlySelectedClue.children.length - 1]
-              .setAttribute("end", timeMS);
+          // display new clue
+          if (selectedClue) {
+            endSetChild(selectedClue, timeMS);
           }
-          const newSelectClueSet = document.createElementNS(svgNS, "set");
-          newSelectClueSet.setAttribute("attributeName", "visibility");
-          newSelectClueSet.setAttribute("to", "visible");
-          newSelectClueSet.setAttribute("begin", timeMS);
-          cluesByLabel[event.clueSection][event.clueLabel].append(newSelectClueSet);
-          currentlySelectedClue = cluesByLabel[event.clueSection][event.clueLabel];
+          beginSetChild(cluesByLabel[event.clueSection][event.clueLabel],
+                      "visibility", "visible", timeMS);
+          selectedClue = cluesByLabel[event.clueSection][event.clueLabel];
+
+          // change square highlighting
+          for (const { x, y } of highlightedSquares || []) {
+            const posKey = `${x}-${y}`;
+            if (squaresByPosition[posKey] !== selectedSquare) {
+              endSetChild(squaresByPosition[posKey], timeMS);
+            }
+          }
+          for (const { x, y } of positionsByClue[event.clueSection][event.clueLabel]) {
+            const posKey = `${x}-${y}`;
+            if (squaresByPosition[posKey] !== selectedSquare) {
+              beginSetChild(squaresByPosition[posKey], "fill", highlightedColor, timeMS);
+            }
+          }
+          highlightedSquares = positionsByClue[event.clueSection][event.clueLabel];
           break;
         case "stop":
           currentlyStopped = true;
@@ -243,11 +298,7 @@ const createSolveAnimation = function(record) {
           cumulativeStopped += time - lastStoppedTime;
         case "submit":
           if (event.success) {
-            const newSubmitSet = document.createElementNS(svgNS, "set");
-            newSubmitSet.setAttribute("attributeName", "visibility");
-            newSubmitSet.setAttribute("to", "visible");
-            newSubmitSet.setAttribute("begin", timeMS);
-            complete.append(newSubmitSet);
+            beginSetChild(complete, "visibility", "visible", timeMS);
             break;
           }
       }
@@ -298,27 +349,17 @@ const createSolveAnimation = function(record) {
         const tickMS = `${i * 1000 / animationSpeed}ms`;
         if (i % 60 === 0) {
           if (i > 0) {
-            const prevMinute = minutes[Math.round(i / 60) - 1];
-            prevMinute.children[prevMinute.children.length - 1].setAttribute("end", tickMS);
+            endSetChild(minutes[Math.round(i / 60) - 1], tickMS);
           }
           const minute = minutes[Math.round(i / 60)];
-          const newMinuteSet = document.createElementNS(svgNS, "set");
-          newMinuteSet.setAttribute("attributeName", "display");
-          newMinuteSet.setAttribute("to", "inline");
-          newMinuteSet.setAttribute("begin", tickMS);
-          minute.append(newMinuteSet);
+          beginSetChild(minute, "display", "inline", tickMS);
         }
 
         if (i > 0) {
-          const prevSecond = seconds[(i - 1) % 60];
-          prevSecond.children[prevSecond.children.length - 1].setAttribute("end", tickMS);
+          endSetChild(seconds[(i - 1) % 60], tickMS);
         }
         const second = seconds[i % 60];
-        const newSecondSet = document.createElementNS(svgNS, "set");
-        newSecondSet.setAttribute("attributeName", "display");
-        newSecondSet.setAttribute("to", "inline");
-        newSecondSet.setAttribute("begin", tickMS);
-        second.append(newSecondSet);
+        beginSetChild(second, "display", "inline", tickMS);
       }
     }
   }
