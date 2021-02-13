@@ -290,27 +290,27 @@ const createSolveAnimation = function(record) {
       }
 
       for (let i = 0; i <= totalTime / 1000; i++) {
-        const timeS = `${i}s`;
+        const tickMS = `${i * 1000 / animationSpeed}ms`;
         if (i % 60 === 0) {
           if (i > 0) {
             const prevMinute = minutesPossible[Math.round(i / 60) - 1];
-            prevMinute.children[prevMinute.children.length - 1].setAttribute("end", timeS);
+            prevMinute.children[prevMinute.children.length - 1].setAttribute("end", tickMS);
           }
           const newMinuteSet = document.createElementNS(svgNS, "set");
           newMinuteSet.setAttribute("attributeName", "visibility");
           newMinuteSet.setAttribute("to", "visible");
-          newMinuteSet.setAttribute("begin", timeS);
+          newMinuteSet.setAttribute("begin", tickMS);
           minutesPossible[Math.round(i / 60)].append(newMinuteSet);
         }
 
         if (i > 0) {
           const prevSecond = secondsPossible[(i - 1) % 60];
-          prevSecond.children[prevSecond.children.length - 1].setAttribute("end", timeS);
+          prevSecond.children[prevSecond.children.length - 1].setAttribute("end", tickMS);
         }
         const newSecondSet = document.createElementNS(svgNS, "set");
         newSecondSet.setAttribute("attributeName", "visibility");
         newSecondSet.setAttribute("to", "visible");
-        newSecondSet.setAttribute("begin", timeS);
+        newSecondSet.setAttribute("begin", tickMS);
         secondsPossible[i % 60].append(newSecondSet);
       }
     }
