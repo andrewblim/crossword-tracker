@@ -5,7 +5,7 @@ const createSolveAnimation = function(record) {
 
   // TODO: make these settable and validated
   const width = 500;
-  const height = 750;
+  const height = 700;
   const margin = 50;
   const backgroundColor = "lightgray";
   const gridColor = "gray";
@@ -63,7 +63,7 @@ const createSolveAnimation = function(record) {
   solver.setAttribute("style", `font-size: ${solverFontSize}px; font-family: sans-serif`);
   solver.textContent = `Solver: ${record.solverName}`;
 
-  // Info below puzzle (timer, complete indicator)
+  // Puzzle-complete indicator below puzzle
 
   const progressFontSize = (width - 2 * margin) * 0.0375;
   let complete = document.createElementNS(svgNS, "text");
@@ -73,13 +73,6 @@ const createSolveAnimation = function(record) {
   complete.setAttribute("style", `font-size: ${progressFontSize}px; font-family: sans-serif; font-weight: bold`);
   complete.setAttribute("visibility", "hidden");
   complete.textContent = "Complete!";
-
-  const timer = document.createElementNS(svgNS, "text");
-  timer.setAttribute("x", margin);
-  timer.setAttribute("y", height - margin);
-  timer.setAttribute("style", `font-size: ${progressFontSize}px; font-family: sans-serif; font-weight: bold`);
-  timer.textContent = "00:00";
-  // TODO: make an animation out of this
 
   // Puzzle itself (grid, current clue)
 
@@ -168,7 +161,6 @@ const createSolveAnimation = function(record) {
       clue.setAttribute("x", width / 2);
       clue.setAttribute("y", margin + topOffset + sqSize * nRows + cluesFontSize * 2);
       clue.textContent = `${clueInfo.label}. ${clueInfo.text}`
-      // TODO: adjust sizing on long clues
       cluesG.append(clue);
       if (cluesByLabel[clueSection] === undefined) {
         cluesByLabel[clueSection] = {};
@@ -179,21 +171,29 @@ const createSolveAnimation = function(record) {
 
   // Animations for puzzle
 
+  let timerG;
   let currentlySelected, currentlySelectedClue;
   if (record.events.length > 0) {
     const startTime = record.events[0].timestamp;
+    let lastStoppedTime = 0, currentlyStopped = true, cumulativeStopped = 0;
     for (const event of record.events) {
-      const time = `${(event.timestamp - startTime) / animationSpeed}ms`;
+      // ignore everything but a start if we are stopped
+      if (currentlyStopped && event.type != "start") {
+        continue;
+      }
+      const time = (event.timestamp - startTime - cumulativeStopped) / animationSpeed;
+      const timeMS = `${time}ms`;
       let posKey;
       switch (event.type) {
         case "update":
           posKey = `${event.x}-${event.y}`;
           if (fillByPosition[posKey] !== undefined) {
-            // make existing fill invisible
-            fillByPosition[posKey].setAttribute("end", time);
+            // make any existing fill invisible starting now
+            fillByPosition[posKey].setAttribute("end", timeMS);
           }
           delete fillByPosition[posKey];
           if (event.fill !== "") {
+            // add new fill and make it visible starting now
             const fill = document.createElementNS(svgNS, "text");
             const squareX = margin + event.x * sqSize;
             const squareY = margin + topOffset + event.y * sqSize;
@@ -203,7 +203,7 @@ const createSolveAnimation = function(record) {
             const newUpdateSet = document.createElementNS(svgNS, "set");
             newUpdateSet.setAttribute("attributeName", "visibility");
             newUpdateSet.setAttribute("to", "visible");
-            newUpdateSet.setAttribute("begin", time);
+            newUpdateSet.setAttribute("begin", timeMS);
             fill.append(newUpdateSet);
             fillG.append(fill);
             fillByPosition[posKey] = fill;
@@ -213,51 +213,129 @@ const createSolveAnimation = function(record) {
           if (currentlySelected) {
             squaresByPosition[currentlySelected]
               .children[squaresByPosition[currentlySelected].children.length - 1]
-              .setAttribute("end", time);
+              .setAttribute("end", timeMS);
           }
           posKey = `${event.x}-${event.y}`;
           const newSelectSet = document.createElementNS(svgNS, "set");
           newSelectSet.setAttribute("attributeName", "fill");
           newSelectSet.setAttribute("to", selectedColor);
-          newSelectSet.setAttribute("begin", time);
+          newSelectSet.setAttribute("begin", timeMS);
           squaresByPosition[posKey].append(newSelectSet);
           currentlySelected = posKey;
           break;
         case "selectClue":
           if (currentlySelectedClue) {
             currentlySelectedClue.children[currentlySelectedClue.children.length - 1]
-              .setAttribute("end", time);
+              .setAttribute("end", timeMS);
           }
           const newSelectClueSet = document.createElementNS(svgNS, "set");
           newSelectClueSet.setAttribute("attributeName", "visibility");
           newSelectClueSet.setAttribute("to", "visible");
-          newSelectClueSet.setAttribute("begin", time);
+          newSelectClueSet.setAttribute("begin", timeMS);
           cluesByLabel[event.clueSection][event.clueLabel].append(newSelectClueSet);
           currentlySelectedClue = cluesByLabel[event.clueSection][event.clueLabel];
           break;
+        case "stop":
+          currentlyStopped = true;
+          lastStoppedTime = time;
+        case "start":
+          currentlyStopped = false;
+          cumulativeStopped += time - lastStoppedTime;
         case "submit":
           if (event.success) {
             const newSubmitSet = document.createElementNS(svgNS, "set");
             newSubmitSet.setAttribute("attributeName", "visibility");
             newSubmitSet.setAttribute("to", "visible");
-            newSubmitSet.setAttribute("begin", time);
+            newSubmitSet.setAttribute("begin", timeMS);
             complete.append(newSubmitSet);
             break;
           }
+      }
+
+      // Timer below puzzle. This is super janky; I don't think I can make
+      // <text> content change with pure SVG, so we create all possible minute
+      // and hour text boxes and make them visible and not as needed.
+
+      const lastTime = record.events[record.events.length - 1].timestamp;
+      const totalTime = lastTime - startTime - cumulativeStopped;
+      const maxMinutes = Math.round(totalTime / 60000);
+      const maxSeconds = Math.min(Math.round(totalTime / 1000), 59);
+      timerG = document.createElementNS(svgNS, "g");
+      timerG.setAttribute("style", `font-size: ${progressFontSize}px; font-family: sans-serif; font-weight: bold`);
+      timerG.setAttribute("visibility", "hidden");
+
+      let minutesPossible = [];
+      for (let i = 0; i <= maxMinutes; i++) {
+        const minutePossible = document.createElementNS(svgNS, "text");
+        minutePossible.setAttribute("x", margin + progressFontSize * 4);
+        minutePossible.setAttribute("y", height - margin);
+        minutePossible.setAttribute("text-anchor", "end");
+        minutePossible.textContent = i;
+        timerG.append(minutePossible);
+        minutesPossible.push(minutePossible);
+      }
+
+      let secondsPossible = [];
+      for (let i = 0; i <= maxSeconds; i++) {
+        const secondPossible = document.createElementNS(svgNS, "text");
+        secondPossible.setAttribute("x", margin + progressFontSize * 4);
+        secondPossible.setAttribute("y", height - margin);
+        if (i < 10) {
+          secondPossible.textContent = `:0${i}`;
+        } else {
+          secondPossible.textContent = `:${i}`;
+        }
+        timerG.append(secondPossible);
+        secondsPossible.push(secondPossible);
+      }
+
+      for (let i = 0; i <= totalTime / 1000; i++) {
+        const timeS = `${i}s`;
+        if (i % 60 === 0) {
+          if (i > 0) {
+            const prevMinute = minutesPossible[Math.round(i / 60) - 1];
+            prevMinute.children[prevMinute.children.length - 1].setAttribute("end", timeS);
+          }
+          const newMinuteSet = document.createElementNS(svgNS, "set");
+          newMinuteSet.setAttribute("attributeName", "visibility");
+          newMinuteSet.setAttribute("to", "visible");
+          newMinuteSet.setAttribute("begin", timeS);
+          minutesPossible[Math.round(i / 60)].append(newMinuteSet);
+        }
+
+        if (i > 0) {
+          const prevSecond = secondsPossible[(i - 1) % 60];
+          prevSecond.children[prevSecond.children.length - 1].setAttribute("end", timeS);
+        }
+        const newSecondSet = document.createElementNS(svgNS, "set");
+        newSecondSet.setAttribute("attributeName", "visibility");
+        newSecondSet.setAttribute("to", "visible");
+        newSecondSet.setAttribute("begin", timeS);
+        secondsPossible[i % 60].append(newSecondSet);
       }
     }
   }
 
   // TODO: just appending for now, but eventually don't, instead download
+  // this may still require a render at some point because we can't get
+  // computed text lengths without it
   svg.append(bg);
   svg.append(titleAndDate);
   svg.append(byline);
   svg.append(solver);
-  svg.append(timer);
+  if (timerG !== undefined) { svg.append(timerG); }
   svg.append(complete);
   svg.append(squaresG);
   svg.append(cluesG);
   svg.append(labelsG);
   svg.append(fillG);
   document.getElementById("container").append(svg);
+
+  // TODO: resize clues - this can only happen after appending the svg to the
+  // document, otherwise getComputedTextLength() returns 0
+  // for (const clue of cluesG.children) {
+  //   if (clue.getComputedTextLength() > nCols * sqSize) {
+  //     const pieces = clue.split(/\s+/);
+  //   }
+  // }
 }
