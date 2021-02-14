@@ -336,12 +336,14 @@ if (puzzle) {
           } else if (request.action === "cacheRecord") {
             chrome.runtime.sendMessage(
               { action: "cacheRecord", key: storageKey, record: record },
-              () => {
+              (result) => {
                 if (chrome.runtime.lastError) {
                   sendResponse({ success: false, error: chrome.runtime.lastError });
-                } else {
-                  sendResponse({ success: true });
+                } else if (result.success) {
+                  sendResponse(result);
                   eventsSinceLastFlush = 0;
+                } else {
+                  sendResponse(result);
                 }
                 return true; // force synchronous
               },
@@ -349,17 +351,19 @@ if (puzzle) {
           } else if (request.action === "clearAndResetRecord") {
             chrome.runtime.sendMessage(
               { action: "clearRecord", key: storageKey },
-              () => {
+              (result) => {
                 if (chrome.runtime.lastError) {
                   sendResponse({ success: false, error: chrome.runtime.lastError });
-                } else {
-                  sendResponse({ success: true });
+                } else if (result.success) {
+                  sendResponse(result);
                   record = {};
                   let userInfo = {};
                   if (result.solverName) { userInfo.solverName = result.solverName }
                   if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
                   updateRecordMetadata(record, userInfo, puzzle);
                   updateRecordingStatus(record);
+                } else {
+                  sendResponse(result);
                 }
                 return true; // force synchronous
               },
