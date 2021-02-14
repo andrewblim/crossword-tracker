@@ -56,6 +56,24 @@ const forEachCell = function (f) {
   }
 }
 
+// get basic info that we need to determine a storage key
+
+const getPuzzleTitle = (puzzle) => {
+  return puzzle.querySelector(`.${titleClass}`)?.textContent;
+}
+
+const getPuzzleDate = (puzzle) => {
+  return puzzle.querySelector(`.${dateClass}`)?.textContent;
+}
+
+const getPuzzleByline = (puzzle) => {
+  // byline info is in one or more sub-spans
+  const bylineElem = puzzle.querySelector(`.${bylineClass}`);
+  if (bylineElem) {
+    return Array.from(bylineElem.children).map(x => x.textContent).join(" - ");
+  }
+}
+
 // Update record with metadata from the DOM and from supplied user info
 const updateRecordMetadata = function (record, userInfo, puzzle) {
   // Version info not yet used, but reserved for the future, in case we want to
@@ -64,17 +82,12 @@ const updateRecordMetadata = function (record, userInfo, puzzle) {
 
   record.url = window.location.href;
   if (puzzle) {
-    const title = puzzle.querySelector(`.${titleClass}`)?.textContent;
+    const title = getPuzzleTitle(puzzle);
     if (title !== undefined) { record.title = title; }
-    const date = puzzle.querySelector(`.${dateClass}`)?.textContent;
+    const date = getPuzzleDate(puzzle);
     if (date !== undefined) { record.date = date; }
-    // byline info is in one or more sub-spans
-    const bylineElem = puzzle.querySelector(`.${bylineClass}`);
-    if (bylineElem) {
-    record.byline = Array.from(bylineElem.children)
-      .map(x => x.textContent)
-      .join(" - ");
-    }
+    const byline = getPuzzleByline(puzzle);
+    if (byline !== undefined) { record.byline = byline; }
   }
 
   // Actively remove solverName and userAgent if not supplied in userInfo but
@@ -213,9 +226,12 @@ let eventsSinceLastFlush = 0;
 // Only do anything if we were able to find the puzzle element.
 
 if (puzzle) {
-  const title = puzzle.querySelector(`.${titleClass}`)?.textContent;
-  const date = puzzle.querySelector(`.${dateClass}`)?.textContent;
-  const storageKey = `record-title-${title}-date-${date}`;
+  // We need enough info from the puzzle to determine the storage key to check
+  // for an existing record
+  const title = getPuzzleTitle(puzzle);
+  const date = getPuzzleDate(puzzle);
+  const byline = getPuzzleByline(puzzle);
+  const storageKey = recordStorageKey(title, date, byline);
 
   chrome.storage.local.get(
     [storageKey, "solverName", "eventLogLevel", "logUserAgent", "nytSettings"],

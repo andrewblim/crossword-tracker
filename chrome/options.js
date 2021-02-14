@@ -235,7 +235,7 @@ chrome.storage.local.get(null, (result) => {
 chrome.storage.onChanged.addListener((changes, _namespace) => {
   for (const key of Object.keys(changes).filter(x => x.startsWith("record-"))) {
     if (changes[key].newValue) {
-      addOrUpdateRow(key, changes[key].newValue)
+      addOrUpdateRow(key, changes[key].newValue);
     } else if (changes[key].oldValue) {
       document.getElementById(key)?.remove();
     }

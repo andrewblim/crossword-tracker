@@ -26,6 +26,23 @@ const humanizedRecordName = function(record) {
   return name.join(" - ");
 }
 
+// Synchronously called SHA1 of a record - useful for identifiers and storage
+// keys. Thanks to https://jameshfisher.com/2017/10/30/web-cryptography-api-hello-world/
+// for very helpful examples of how to use crypto.subtle.
+
+const sha1Object = async function(obj) {
+  const buf = await crypto.subtle.digest(
+    "SHA-1",
+    new TextEncoder("utf-8").encode(JSON.stringify(obj)),
+  );
+  return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, "0")).join("");
+}
+
+const recordStorageKey = function(title, date, byline) {
+  return "record-" + sha1Object({ title, date, byline });
+}
+
+// Suggested filenames for download functionality
 const suggestedRecordFilename = function(record, suffix) {
   let filename = "";
   let url = new URL(record.url);
