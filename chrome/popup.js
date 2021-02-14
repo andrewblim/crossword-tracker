@@ -119,7 +119,9 @@ document.getElementById("download-record").addEventListener("click", async () =>
       { action: "getRecord" },
       (result) => {
         if (result?.success) {
-          downloadRecord(result.record, { filename: suggestedRecordFilename(result.record) });
+          downloadRecord(result.record, {
+            filename: suggestedRecordFilename(result.record, "json"),
+          });
           const msg = "Record download successfully requested";
           updateStatusBar(msg);
           console.log(msg);

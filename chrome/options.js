@@ -138,7 +138,9 @@ const buildRow = (rowId, record) => {
   recordDownloadButton.addEventListener("click", () => {
     chrome.storage.local.get(rowId, (result) => {
       if (result[rowId]) {
-        downloadRecord(result[rowId], { filename: suggestedRecordFilename(result[rowId]) });
+        downloadRecord(result[rowId], {
+          filename: suggestedRecordFilename(result[rowId], "json"),
+        });
       }
     });
   });

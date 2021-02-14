@@ -26,15 +26,18 @@ const humanizedRecordName = function(record) {
   return name.join(" - ");
 }
 
-const suggestedRecordFilename = function(record) {
+const suggestedRecordFilename = function(record, suffix) {
+  let filename = "";
   let url = new URL(record.url);
   if (url.hostname === "www.nytimes.com") {
-    let stub = url.pathname.replace(/^\/crosswords\/game\//, "").replace(/\//g, "-");
-    return `nyt-${stub}.json`;
-  } else {
-    let stub = url.pathname.replace(/\//g, "-");
-    return `${stub}.json`;
+    filename = "NYT - ";
   }
+  filename += `${record.date || "date unknown"} - ${record.title || "untitled"}`
+  if (record.byline) {
+    filename += ` - ${record.byline}`;
+  }
+  filename += `.${suffix}`;
+  return filename;
 }
 
 // Detect if we're in an unstarted state
