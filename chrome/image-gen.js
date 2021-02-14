@@ -4,9 +4,7 @@ const svgNS = "http://www.w3.org/2000/svg";
 
 // We do puzzle animations by adding <set> children to elements to control when
 // they appear and disappear (typically toggling either "visibility" or
-// "display"). These are helper functions for that. They assume that the
-// elements in question only have <set> elements and that only the latest one
-// ever has no "end" attribute, which suffices for our purposes.
+// "display"). These are helper functions for that.
 
 const beginSetChild = function(elem, attributeName, to, begin) {
   const newSet = document.createElementNS(svgNS, "set");
@@ -17,8 +15,10 @@ const beginSetChild = function(elem, attributeName, to, begin) {
 }
 
 const endSetChild = function(elem, end) {
-  if (elem.children.length > 0) {
-    elem.children[elem.children.length - 1].setAttribute("end", end);
+  for (const child of elem.children) {
+    if (child.nodeName === "set" && child.getAttribute("end") === null) {
+      child.setAttribute("end", end);
+    }
   }
 }
 
@@ -182,7 +182,9 @@ const createSolveAnimation = function(record) {
       const clue = document.createElementNS(svgNS, "text");
       clue.setAttribute("x", width / 2);
       clue.setAttribute("y", margin + topOffset + sqSize * nRows + cluesFontSize * 2);
-      clue.textContent = `${clueInfo.label}. ${clueInfo.text}`
+      const clueText = document.createElementNS(svgNS, "tspan");
+      clueText.textContent = `${clueInfo.label}. ${clueInfo.text}`
+      clue.append(clueText);
       cluesG.append(clue);
       if (cluesByLabel[clueSection] === undefined) {
         cluesByLabel[clueSection] = {};
@@ -227,7 +229,6 @@ const createSolveAnimation = function(record) {
       const time = (event.timestamp - startTime - cumulativeStopped) / animationSpeed;
       const timeMS = `${time}ms`;
       let posKey;
-      console.log(event);
       switch (event.type) {
         case "update":
           posKey = `${event.x}-${event.y}`;
@@ -379,11 +380,58 @@ const createSolveAnimation = function(record) {
   svg.append(fillG);
   document.getElementById("container").append(svg);
 
-  // TODO: resize clues - this can only happen after appending the svg to the
-  // document, otherwise getComputedTextLength() returns 0
-  // for (const clue of cluesG.children) {
-  //   if (clue.getComputedTextLength() > nCols * sqSize) {
-  //     const pieces = clue.split(/\s+/);
-  //   }
-  // }
+  // Resize long clues - this can only happen after appending the SVG to the
+  // document, otherwise getComputedTextLength() returns 0. This would not be
+  // necessary if SVG had word wrapping, which has been proposed for future
+  // versions of the standard.
+
+  const maxClueWidth = width - margin * 2;
+  for (const clue of cluesG.children) {
+    // If clue text is too long:
+    //
+    // - Create a hidden text node
+    // - Split the clue text by spaces and chunk it into lines, where each line
+    //   is as long as possible before its computed length extends past the
+    //   witdth of the puzzle
+    // - Remove the hidden node
+    // - Remove the original tspan with the too-long clue, and add in tspans
+    //   for the lines
+
+    if (clue.getComputedTextLength() > maxClueWidth) {
+      // test node must be styled the same way as clues, otherwise the computed
+      // lengths will be inaccurate
+      const testText = document.createElementNS(svgNS, "text");
+      testText.setAttribute("style", `font-size: ${cluesFontSize}px; font-family: sans-serif`);
+      testText.setAttribute("text-anchor", "middle");
+      testText.setAttribute("dominant-baseline", "hanging");
+      testText.setAttribute("visibility", "hidden");
+      svg.append(testText);
+
+      const lines = [];
+      const words = clue.textContent.split(" ");
+      let currentLine = words[0];
+      for (const word of words.slice(1)) {
+        const lineNode = document.createElementNS(svgNS, "tspan");
+        lineNode.textContent = `${currentLine} ${word}`;
+        testText.append(lineNode);
+        if (lineNode.getComputedTextLength() <= maxClueWidth) {
+          currentLine = lineNode.textContent;
+        } else {
+          lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      lines.push(currentLine);
+
+      testText.remove();
+      Array.from(clue.children).filter(x => x.nodeName === "tspan").forEach(x => x.remove());
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const lineNode = document.createElementNS(svgNS, "tspan");
+        lineNode.setAttribute("x", clue.getAttribute("x"));
+        lineNode.setAttribute("dy", `${1.2 * i}em`);
+        lineNode.textContent = lines[i];
+        clue.prepend(lineNode);
+      }
+    }
+  }
 }
