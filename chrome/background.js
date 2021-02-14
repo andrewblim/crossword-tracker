@@ -3,7 +3,7 @@
 // Default preferences to set on initial install
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.sync.get(
+  chrome.storage.local.get(
     [
       "solverName",
       "eventLogLevel",
@@ -22,7 +22,7 @@ chrome.runtime.onInstalled.addListener(() => {
         },
         results,
       )
-      chrome.storage.sync.set(update);
+      chrome.storage.local.set(update);
     },
   );
 });
@@ -33,7 +33,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   switch (request.action) {
     case "cacheRecord":
       if (request.key !== undefined && request.record !== undefined) {
-        chrome.storage.sync.set({ [request.key]: request.record }, () => {
+        chrome.storage.local.set({ [request.key]: request.record }, () => {
           if (chrome.runtime.lastError) {
             sendResponse({ success: false, error: chrome.runtime.lastError });
           } else {
@@ -48,7 +48,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       break;
     case "clearRecord":
       if (request.key !== undefined) {
-        chrome.storage.sync.remove(request.key, () => {
+        chrome.storage.local.remove(request.key, () => {
           if (chrome.runtime.lastError) {
             sendResponse({ success: false, error: chrome.runtime.lastError });
           } else {

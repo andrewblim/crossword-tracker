@@ -1,7 +1,7 @@
 "use strict";
 
 // Minor amounts of current user settings displayed at top
-chrome.storage.sync.get(
+chrome.storage.local.get(
   ["solverName", "eventLogLevel"],
   ({ solverName, eventLogLevel }) => {
     const solvingAsElem = document.getElementById("solving-as");

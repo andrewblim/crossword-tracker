@@ -2,7 +2,7 @@
 
 // Functions to populate and save settings
 
-chrome.storage.sync.get(
+chrome.storage.local.get(
   ["solverName", "eventLogLevel", "logUserAgent"],
   ({ solverName, eventLogLevel, logUserAgent }) => {
     document.getElementById("solverName").value = (solverName || "");
@@ -11,7 +11,7 @@ chrome.storage.sync.get(
   },
 );
 
-chrome.storage.sync.get(
+chrome.storage.local.get(
   ["nytSettings"],
   ({ nytSettings }) => {
     document.getElementById("nyt-eventFlushFrequency").value = (
@@ -25,7 +25,7 @@ const saveNyt = async (callback) => {
   if (eventFlushFrequency && eventFlushFrequency < 0) {
     document.getElementById("general-options-save-message").textContent = "";
   }
-  chrome.storage.sync.set(
+  chrome.storage.local.set(
     {
       nytSettings: {
         eventFlushFrequency: parseInt(document.getElementById("nyt-eventFlushFrequency").value) || null,
@@ -40,7 +40,7 @@ document.getElementById("general-options").addEventListener("change", () => {
 });
 
 document.getElementById("general-options-save").addEventListener("click", () => {
-  chrome.storage.sync.set(
+  chrome.storage.local.set(
     {
       solverName: document.getElementById("solverName").value,
       eventLogLevel: document.getElementById("eventLogLevel").value,
@@ -70,7 +70,7 @@ document.getElementById("nyt-options-save").addEventListener("click", () => {
     const msg = "Flush frequency must be parseable to a positive integer, or blank"
     document.getElementById("nyt-options-save-message").textContent = msg;
   } else {
-    chrome.storage.sync.set(
+    chrome.storage.local.set(
       {
         nytSettings: {
           eventFlushFrequency: parseInt(document.getElementById("nyt-eventFlushFrequency").value) || null,
@@ -136,7 +136,7 @@ const buildRow = (rowId, record) => {
   const recordDownloadButton = document.createElement("button");
   recordDownloadButton.textContent = "Download JSON";
   recordDownloadButton.addEventListener("click", () => {
-    chrome.storage.sync.get(rowId, (result) => {
+    chrome.storage.local.get(rowId, (result) => {
       if (result[rowId]) {
         downloadRecord(result[rowId], { filename: suggestedRecordFilename(result[rowId]) });
       }
@@ -145,7 +145,7 @@ const buildRow = (rowId, record) => {
   const recordDownloadImageButton = document.createElement("button");
   recordDownloadImageButton.textContent = "Download SVG";
   recordDownloadImageButton.addEventListener("click", () => {
-    chrome.storage.sync.get(rowId, (result) => {
+    chrome.storage.local.get(rowId, (result) => {
       if (result[rowId]) {
         // TODO: better default filename
         createSolveAnimation(result[rowId]);
@@ -157,7 +157,7 @@ const buildRow = (rowId, record) => {
   recordDeleteButton.addEventListener("click", () => {
     let verify = confirm(`Are you sure you want to delete "${linktext}"? This cannot be undone.`);
     if (verify) {
-      chrome.storage.sync.remove(rowId, () => {
+      chrome.storage.local.remove(rowId, () => {
         if (chrome.runtime.lastError) {
           const msg = `Failed to delete record "${linktext}" ${chrome.runtime.lastError}`
           document.getElementById("record-listing-message").textContent = msg;
@@ -224,7 +224,7 @@ const addOrUpdateRow = (rowId, record) => {
 // Build the table, and add a listener to keep it in sync wth any changes
 // from recording activity
 
-chrome.storage.sync.get(null, (result) => {
+chrome.storage.local.get(null, (result) => {
   for (const key of Object.keys(result)) {
     if (key.startsWith("record-")) { addOrUpdateRow(key, result[key]); }
   }
@@ -243,9 +243,9 @@ chrome.storage.onChanged.addListener((changes, _namespace) => {
 document.getElementById("delete-all-records").addEventListener("click", () => {
   let verify = confirm("Are you sure you want to delete all cached records? This cannot be undone.");
   if (verify) {
-    chrome.storage.sync.get(null, (result) => {
+    chrome.storage.local.get(null, (result) => {
       let recordKeys = Object.keys(result).filter(k => k.startsWith("record-"));
-      chrome.storage.sync.remove(recordKeys, () => {
+      chrome.storage.local.remove(recordKeys, () => {
         if (chrome.runtime.lastError) {
           const msg = `Failed to delete all records: ${chrome.runtime.lastError}`;
           document.getElementById("record-listing-message").textContent = msg;

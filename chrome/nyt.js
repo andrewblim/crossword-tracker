@@ -290,7 +290,7 @@ let eventsSinceLastFlush = 0;
 
 // Only do anything if we were able to find the puzzle element.
 if (puzzle) {
-  chrome.storage.sync.get(
+  chrome.storage.local.get(
     [storageKey, "solverName", "eventLogLevel", "logUserAgent", "nytSettings"],
     (result) => {
       // Get event-logging settings
