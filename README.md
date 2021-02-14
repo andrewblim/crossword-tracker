@@ -3,6 +3,6 @@
 Set of projects for tracking progress on crossword solving.
 
 - `chrome/` - Chrome extension that tracks and saves files that record solve progress.
-- `image-gen/` - Command-line tool to convert saved files into images.
+- As I add support for more browsers, they'll be added as new subdirectories.
 
 See also `doc/` for documentation.
