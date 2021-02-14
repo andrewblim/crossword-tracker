@@ -22,7 +22,7 @@ const endSetChild = function(elem, end) {
   }
 }
 
-const createSolveAnimation = function(record) {
+const createSolveAnimation = function(record, imageCallback) {
   chrome.storage.local.get(
     [
       "imageWidth",
@@ -36,7 +36,11 @@ const createSolveAnimation = function(record) {
       "imageHighlightedColor",
       "imageAnimationSpeed",
     ],
-    (settings) => { createSolveAnimationWithSettings(record, settings); }
+    (settings) => {
+      const imageElem = createSolveAnimationWithSettings(record, settings);
+      imageCallback(imageElem);
+      imageElem.remove();
+    }
   );
 }
 
@@ -382,9 +386,6 @@ const createSolveAnimationWithSettings = function(record, settings) {
     }
   }
 
-  // TODO: just appending for now, but eventually don't, instead download
-  // this may still require a render at some point because we can't get
-  // computed text lengths without it
   svg.append(bg);
   svg.append(titleAndDate);
   svg.append(byline);
@@ -395,7 +396,10 @@ const createSolveAnimationWithSettings = function(record, settings) {
   svg.append(cluesG);
   svg.append(labelsG);
   svg.append(fillG);
-  document.getElementById("container").append(svg);
+
+  // We must append it to the body for the next section, which relies on
+  // computed text lengths, to work. At this point it becomes visible.
+  document.getElementsByTagName("BODY")[0].append(svg);
 
   // Resize long clues - this can only happen after appending the SVG to the
   // document, otherwise getComputedTextLength() returns 0. This would not be
@@ -451,4 +455,6 @@ const createSolveAnimationWithSettings = function(record, settings) {
       }
     }
   }
+
+  return svg;
 }

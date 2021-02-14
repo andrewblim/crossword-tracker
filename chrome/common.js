@@ -10,6 +10,16 @@ const downloadRecord = (record, opts = {}) => {
   });
 };
 
+const downloadImage = (imageElem, opts = {}) => {
+  chrome.downloads.download({
+    url: URL.createObjectURL(
+      new Blob([imageElem.outerHTML], { type: "image/svg+xml" })
+    ),
+    saveAs: true,
+    ...opts
+  });
+};
+
 const humanizedRecordName = function(record) {
   let name = [];
   if (record.title && record.title !== "") {

@@ -188,8 +188,11 @@ const buildRow = (rowId, record) => {
   recordDownloadImageButton.addEventListener("click", () => {
     chrome.storage.local.get(rowId, (result) => {
       if (result[rowId]) {
-        // TODO: better default filename
-        createSolveAnimation(result[rowId]);
+        createSolveAnimation(result[rowId], (imageElem) => {
+          downloadImage(imageElem, {
+            filename: suggestedRecordFilename(result[rowId], "svg"),
+          });
+        });
       }
     });
   });
