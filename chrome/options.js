@@ -40,8 +40,10 @@ chrome.storage.local.get(
   },
 );
 
-document.getElementById("general-options").addEventListener("change", () => {
-  document.getElementById("general-options-save-message").textContent = "";
+document.getElementById("general-options").querySelectorAll("input, select").forEach((elem) => {
+  elem.addEventListener("change", () => {
+    document.getElementById("general-options-save-message").textContent = "";
+  });
 });
 
 document.getElementById("general-options-save").addEventListener("click", () => {
@@ -64,8 +66,10 @@ document.getElementById("general-options-save").addEventListener("click", () => 
   );
 });
 
-document.getElementById("image-options").addEventListener("change", () => {
-  document.getElementById("image-options-save-message").textContent = "";
+document.getElementById("image-options").querySelectorAll("input, select").forEach((elem) => {
+  elem.addEventListener("change", () => {
+    document.getElementById("image-options-save-message").textContent = "";
+  });
 });
 
 document.getElementById("image-options-save").addEventListener("click", () => {
@@ -94,8 +98,10 @@ document.getElementById("image-options-save").addEventListener("click", () => {
   );
 });
 
-document.getElementById("nyt-options").addEventListener("change", () => {
-  document.getElementById("nyt-options-save-message").textContent = "";
+document.getElementById("nyt-options").querySelectorAll("input, select").forEach((elem) => {
+  elem.addEventListener("change", () => {
+    document.getElementById("nyt-options-save-message").textContent = "";
+  });
 });
 
 document.getElementById("nyt-options-save").addEventListener("click", () => {
