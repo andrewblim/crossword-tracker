@@ -16,7 +16,7 @@ Content scripts should also stop logging after recording a successful submit eve
 
 ## Service worker
 
-The service worker `background.js` handles common functionality for all content scripts, in particular maintenance of records in Chrome storage. The storage key for a given puzzle should be the string `record-` followed by its URL, for example something like `record-https://www.nytimes.com/crosswords/game/mini/2016/01/01`.
+The service worker `background.js` handles common functionality for all content scripts, in particular maintenance of records in Chrome storage. The storage key for a given puzzle should be the string `record-` followed by some kind of identifier, which may vary by puzzle website (i.e. different content scripts may implement it differently).
 
 The service worker accepts messages in the format `{ action, ... }`. The currently supported `action` values are:
 

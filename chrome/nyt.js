@@ -24,7 +24,6 @@ const checkedClass = "Shame-checked--3E9GW";
 const congratsClass = "CongratsModal-congratsModalContent--19hpv";
 
 // per-page constants
-const storageKey = `record-${window.location.href}`;
 const puzzle = document.querySelector(`div.${puzzleClass}`);
 const firstCell = document.getElementById("cell-id-0");
 const xSize = firstCell?.getAttribute("width");
@@ -155,9 +154,8 @@ const captureBoardState = function () {
 
 // Record a batch of events that occur at the same time. Don't record events
 // that would put the event log in a bad state - order the events properly.
-const recordConcurrentEventBatch = function (events, timestamp) {
+const recordConcurrentEventBatch = function (events, timestamp, storageKey) {
   if (events.length === 0) { return; }
-  if (!timestamp) { timestamp = new Date().getTime(); }
 
   // Ensure events are added in a consistent order, so that, for example, we
   // don't leave the log in an inconsistent state with fill happening after
@@ -208,88 +206,17 @@ const recordConcurrentEventBatch = function (events, timestamp) {
   }
 };
 
-const puzzleCallback = function (mutationsList, _observer) {
-  // record timestamp now, to ensure that all events generated from each call
-  // are generated with the same timestamp
-  let newEvents = [];
-  let timestamp = new Date().getTime();
-
-  for (const mutation of mutationsList) {
-    switch (mutation.type) {
-      case "characterData":
-        // square update
-        if (mutation.target.parentElement?.getAttribute("text-anchor") === "middle") {
-          let fill = mutation.target.data;
-          let cell = getCellSibling(mutation.target.parentElement);
-          if (cell) {
-            newEvents.push({ type: "update", ...getXYForCell(cell), fill });
-          }
-        }
-        break;
-      case "childList":
-        // - submit (solve) occurs via insertion of a fresh modal at the puzzle
-        //   level that if successful contains a congratulatory sub-element
-        // - start/stop occurs via removal/addition of a "veil" modal
-        // - initial reveal/check for a given square inserts a <use> element
-        for (const node of mutation.addedNodes) {
-          if (mutation.target === puzzle && node.querySelector(`.${congratsClass}`)) {
-            newEvents.push({ type: "submit", success: true });
-          } else if (node.classList?.contains(veilClass)) {
-            newEvents.push({ type: "stop" });
-          } else if (node.classList?.contains(revealedClass)) {
-            let cell = getCellSibling(node);
-            if (cell) { newEvents.push({ type: "reveal", ...getXYForCell(cell) }); }
-          } else if (node.classList?.contains(checkedClass)) {
-            let cell = getCellSibling(node);
-            if (cell) { newEvents.push({ type: "check", ...getXYForCell(cell) }); }
-          }
-        }
-        for (const node of mutation.removedNodes) {
-          if (node.classList?.contains(veilClass)) {
-            newEvents.push({ type: "start" });
-          }
-        }
-        break;
-      case "attributes":
-        // subsequent reveal/check (<use> element already there and gets modified)
-        if (mutation.target.classList?.contains(revealedClass)) {
-          let cell = getCellSibling(mutation.target);
-          if (cell) { newEvents.push({ type: "reveal", ...getXYForCell(cell) }); }
-        } else if (mutation.target.classList?.contains(checkedClass)) {
-          let cell = getCellSibling(mutation.target);
-          if (cell) { newEvents.push({ type: "check", ...getXYForCell(cell) }); }
-        } else if (eventLogLevel === "full" &&
-                   mutation.target.classList?.contains(selectedClass) &&
-                   !(mutation.oldValue.split(" ").includes(selectedClass))) {
-          let cell = getCellSibling(mutation.target);
-          if (cell) { newEvents.push({ type: "select", ...getXYForCell(cell) }); }
-        } else if (eventLogLevel === "full" &&
-                   mutation.target.classList?.contains(clueSelectedClass) &&
-                   !(mutation.oldValue.split(" ").includes(clueSelectedClass))) {
-          let clueSection =
-            Array.from(mutation.target.parentElement?.parentElement?.children || [])
-            .find(elem => elem.classList?.contains(clueListTitleClass))
-            ?.textContent || null;
-          let clueLabel =
-            Array.from(mutation.target.children || [])
-            .find(elem => elem.classList?.contains(clueLabelClass))
-            ?.textContent || null;
-          if (clueSection && clueLabelClass) {
-            newEvents.push({ type: "selectClue", clueSection, clueLabel });
-          }
-        }
-        break;
-    }
-  }
-  recordConcurrentEventBatch(newEvents, timestamp);
-};
-
 let record, observer;
 let eventFlushFrequency, eventLogLevel;
 let eventsSinceLastFlush = 0;
 
 // Only do anything if we were able to find the puzzle element.
+
 if (puzzle) {
+  const title = puzzle.querySelector(`.${titleClass}`)?.textContent;
+  const date = puzzle.querySelector(`.${dateClass}`)?.textContent;
+  const storageKey = `record-title-${title}-date-${date}`;
+
   chrome.storage.local.get(
     [storageKey, "solverName", "eventLogLevel", "logUserAgent", "nytSettings"],
     (result) => {
@@ -310,14 +237,94 @@ if (puzzle) {
       // so that we don't lose progress.
       window.onbeforeunload = () => {
         if (!currentlyStopped(record) && !currentlyUnstarted(record)) {
-          recordConcurrentEventBatch([{ type: "stop" }]);
+          recordConcurrentEventBatch(
+            [{ type: "stop" }],
+            new Date().getTime(),
+            storageKey,
+          );
           chrome.runtime.sendMessage(
             { action: "cacheRecord", key: storageKey, record: record },
           );
         }
       };
 
-      // Create and start observer
+      // Create and start observer with callback
+      const puzzleCallback = (mutationsList, _observer) => {
+        // record timestamp now, to ensure that all events generated from a
+        // single callback call have the same timestamp
+        let newEvents = [];
+        let timestamp = new Date().getTime();
+
+        for (const mutation of mutationsList) {
+          switch (mutation.type) {
+            case "characterData":
+              // square update
+              if (mutation.target.parentElement?.getAttribute("text-anchor") === "middle") {
+                let fill = mutation.target.data;
+                let cell = getCellSibling(mutation.target.parentElement);
+                if (cell) {
+                  newEvents.push({ type: "update", ...getXYForCell(cell), fill });
+                }
+              }
+              break;
+            case "childList":
+              // - submit (solve) occurs via insertion of a fresh modal at the puzzle
+              //   level that if successful contains a congratulatory sub-element
+              // - start/stop occurs via removal/addition of a "veil" modal
+              // - initial reveal/check for a given square inserts a <use> element
+              for (const node of mutation.addedNodes) {
+                if (mutation.target === puzzle && node.querySelector(`.${congratsClass}`)) {
+                  newEvents.push({ type: "submit", success: true });
+                } else if (node.classList?.contains(veilClass)) {
+                  newEvents.push({ type: "stop" });
+                } else if (node.classList?.contains(revealedClass)) {
+                  let cell = getCellSibling(node);
+                  if (cell) { newEvents.push({ type: "reveal", ...getXYForCell(cell) }); }
+                } else if (node.classList?.contains(checkedClass)) {
+                  let cell = getCellSibling(node);
+                  if (cell) { newEvents.push({ type: "check", ...getXYForCell(cell) }); }
+                }
+              }
+              for (const node of mutation.removedNodes) {
+                if (node.classList?.contains(veilClass)) {
+                  newEvents.push({ type: "start" });
+                }
+              }
+              break;
+            case "attributes":
+              // subsequent reveal/check (<use> element already there and gets modified)
+              if (mutation.target.classList?.contains(revealedClass)) {
+                let cell = getCellSibling(mutation.target);
+                if (cell) { newEvents.push({ type: "reveal", ...getXYForCell(cell) }); }
+              } else if (mutation.target.classList?.contains(checkedClass)) {
+                let cell = getCellSibling(mutation.target);
+                if (cell) { newEvents.push({ type: "check", ...getXYForCell(cell) }); }
+              } else if (eventLogLevel === "full" &&
+                         mutation.target.classList?.contains(selectedClass) &&
+                         !(mutation.oldValue.split(" ").includes(selectedClass))) {
+                let cell = getCellSibling(mutation.target);
+                if (cell) { newEvents.push({ type: "select", ...getXYForCell(cell) }); }
+              } else if (eventLogLevel === "full" &&
+                         mutation.target.classList?.contains(clueSelectedClass) &&
+                         !(mutation.oldValue.split(" ").includes(clueSelectedClass))) {
+                let clueSection =
+                  Array.from(mutation.target.parentElement?.parentElement?.children || [])
+                  .find(elem => elem.classList?.contains(clueListTitleClass))
+                  ?.textContent || null;
+                let clueLabel =
+                  Array.from(mutation.target.children || [])
+                  .find(elem => elem.classList?.contains(clueLabelClass))
+                  ?.textContent || null;
+                if (clueSection && clueLabelClass) {
+                  newEvents.push({ type: "selectClue", clueSection, clueLabel });
+                }
+              }
+              break;
+          }
+        }
+        recordConcurrentEventBatch(newEvents, timestamp, storageKey);
+      };
+
       observer = new MutationObserver(puzzleCallback);
       updateRecordingStatus(record);
 
