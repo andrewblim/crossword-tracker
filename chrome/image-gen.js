@@ -23,17 +23,34 @@ const endSetChild = function(elem, end) {
 }
 
 const createSolveAnimation = function(record) {
-  // TODO: make these settable and validated
-  const width = 500;
-  const height = 700;
-  const margin = 50;
-  const backgroundColor = "lightgray";
-  const gridColor = "gray";
-  const fillableColor = "white";
-  const unfillableColor = "black";
-  const selectedColor = "yellow";
-  const highlightedColor = "lightblue";
-  const animationSpeed = 1.0;
+  chrome.storage.local.get(
+    [
+      "imageWidth",
+      "imageHeight",
+      "imageMargin",
+      "imageBackgroundColor",
+      "imageGridColor",
+      "imageFillableColor",
+      "imageUnfillableColor",
+      "imageSelectedColor",
+      "imageHighlightedColor",
+      "imageAnimationSpeed",
+    ],
+    (settings) => { createSolveAnimationWithSettings(record, settings); }
+  );
+}
+
+const createSolveAnimationWithSettings = function(record, settings) {
+  const width = settings.imageWidth;
+  const height = settings.imageHeight;
+  const margin = settings.imageMargin;
+  const backgroundColor = settings.imageBackgroundColor;
+  const gridColor = settings.imageGridColor;
+  const fillableColor = settings.imageFillableColor;
+  const unfillableColor = settings.imageUnfillableColor;
+  const selectedColor = settings.imageSelectedColor;
+  const highlightedColor = settings.imageHighlightedColor;
+  const animationSpeed = settings.imageAnimationSpeed;
 
   document.getElementById("solve-animation")?.remove();
 
