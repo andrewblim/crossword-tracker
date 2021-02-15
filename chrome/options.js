@@ -274,13 +274,25 @@ const addOrUpdateRow = (rowId, record) => {
 // from recording activity
 
 chrome.storage.local.get(null, (result) => {
-  for (const key of Object.keys(result)) {
+  const recordKeys = Object.keys(result).filter(key => key.startsWith("record-"));
+  // sort in reverse chronological
+  recordKeys.sort((a, b) => {
+    let aLast = result[a].events[result[a].events.length - 1]?.timestamp;
+    let bLast = result[b].events[result[b].events.length - 1]?.timestamp;
+    if ((aLast === undefined && bLast !== undefined) || (aLast < bLast)) {
+      return 1;
+    } else if ((aLast !== undefined && bLast === undefined) || (aLast > bLast)) {
+      return -1;
+    }
+    return 0;
+  })
+  for (const key of recordKeys) {
     if (key.startsWith("record-")) { addOrUpdateRow(key, result[key]); }
   }
 });
 
 chrome.storage.onChanged.addListener((changes, _namespace) => {
-  for (const key of Object.keys(changes).filter(x => x.startsWith("record-"))) {
+  for (const key of Object.keys(changes).filter(key => key.startsWith("record-"))) {
     if (changes[key].newValue) {
       addOrUpdateRow(key, changes[key].newValue);
     } else if (changes[key].oldValue) {
