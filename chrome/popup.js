@@ -139,7 +139,36 @@ document.getElementById("download-record").addEventListener("click", async () =>
   });
 });
 
-// Only show the buttons if
+document.getElementById("download-svg").addEventListener("click", async () => {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.tabs.sendMessage(
+      tabs[0].id,
+      { action: "getRecord" },
+      (result) => {
+        if (result?.success) {
+          createSolveAnimation(result.record, (imageElem) => {
+            downloadImage(imageElem, {
+              filename: suggestedRecordFilename(result.record, "svg"),
+            });
+          });
+          const msg = "SVG download successfully requested";
+          updateStatusBar(msg);
+          console.log(msg);
+        } else if (result?.error) {
+          const msg = `Failed to download SVG. Error: ${result.error}`;
+          updateStatusBar(msg);
+          console.log(msg);
+        } else {
+          const msg = "Failed to download SVG, unspecified error";
+          updateStatusBar(msg);
+          console.log(msg);
+        }
+      },
+    );
+  });
+});
+
+// Only show the buttons if the current tab pings
 
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   chrome.tabs.sendMessage(
