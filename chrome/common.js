@@ -72,6 +72,35 @@ const suggestedRecordFilename = function(record, suffix) {
   return filename;
 }
 
+// Functions for sorting two events in a well-defined order, so that certain
+// events always come first even if they are considered to occur at the same
+// time. As a common example, solving a puzzle may be concurrent with a square
+// update; this ensures that the submit event happens last.
+
+const eventPriority = {
+  start: 0,
+  reveal: 1,
+  check: 2,
+  update: 3,
+  select: 4,
+  selectClue: 5,
+  stop: 98,
+  submit: 99,
+}
+
+const compareEvents = function(x, y) {
+  if (x.timestamp < y.timestamp) {
+    return -1;
+  } else if (x.timestamp > y.timestamp) {
+    return 1;
+  } else if (eventPriority[x.type] < eventPriority[y.type]) {
+    return -1;
+  } else if (eventPriority[x.type] > eventPriority[y.type]) {
+    return 1;
+  }
+  return 0;
+}
+
 // Detect if we're in an unstarted state
 const currentlyUnstarted = function(record) {
   return record.events.length === 0;

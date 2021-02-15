@@ -166,47 +166,43 @@ const captureBoardState = function () {
   return boardState;
 };
 
-// Record a batch of events that occur at the same time. Don't record events
-// that would put the event log in a bad state - order the events properly.
-const recordConcurrentEventBatch = function (events, timestamp, storageKey) {
-  if (events.length === 0) { return; }
+// Record a batch of events
 
-  // Ensure events are added in a consistent order, so that, for example, we
-  // don't leave the log in an inconsistent state with fill happening after
-  // a submit.
-  const eventPriority = {
-    start: 0,
-    reveal: 1,
-    check: 2,
-    update: 3,
-    select: 4,
-    selectClue: 5,
-    stop: 9,
-    submit: 99,
-  }
-  events.sort((a, b) => ((eventPriority[a] || 0) - (eventPriority[b] || 0)))
-
+const recordEventBatch = function (events, storageKey) {
   // Don't record anything if we are stopped, unless there is a start event
   // in the event batch. This prevents us from incorrectly creating events
   // if we load a puzzle that already has fill.
-  if (currentlyStopped(record) && !currentlyUnstarted(record) && events[0].type !== "start") {
+  if (currentlyStopped(record) && !currentlyUnstarted(record) &&
+      events.find(x => x.type === "start") === undefined) {
     return;
   }
 
+  // Add each event into the appropriate place in record.events. While this
+  // is often at the end, we want to make sure concurrent events are placed in
+  // the order indicated by compareEvents, and we also want this to be robust
+  // to event batches arriving out of order.
+  let hasStoppage = false, hasSuccessfulSubmit = false;
   for (const event of events) {
-    record.events.push({ ...event, timestamp });
+    let i = record.events.length;
+    if (event.type === "stop") {
+      hasStoppage = true;
+    } else if (event.type === "submit" && event.success) {
+      hasSuccessfulSubmit = true;
+    }
+    while (i > 0 && compareEvents(record.events[i - 1], event) >= 0) { i--; }
+    record.events.splice(i, 0, event);
   }
 
   // cache the record on stoppages, submits, or just if it's been a while
-  const lastEvent = events[events.length - 1];
-  let stoppage = lastEvent.type === "stop";
-  let successfulSubmit = lastEvent.type === "submit" && lastEvent.success;
-  let timeToRecord;
+  let enoughEventsToRecord = false;
   if (eventFlushFrequency) {
     eventsSinceLastFlush += events.length;
-    timeToRecord = eventsSinceLastFlush >= eventFlushFrequency;
+    enoughEventsToRecord = eventsSinceLastFlush >= eventFlushFrequency;
   }
-  if (stoppage || successfulSubmit || timeToRecord) {
+  if (hasStoppage || hasSuccessfulSubmit || enoughEventsToRecord) {
+    console.log(`Saving to browser storage (stoppage: ${hasStoppage}, ` +
+                `successful submit: ${hasSuccessfulSubmit}, ` +
+                `enough events: ${enoughEventsToRecord})`)
     chrome.runtime.sendMessage(
       { action: "cacheRecord", key: storageKey, record },
       (result) => {
@@ -214,7 +210,7 @@ const recordConcurrentEventBatch = function (events, timestamp, storageKey) {
       },
     );
   }
-  if (successfulSubmit) {
+  if (hasSuccessfulSubmit) {
     observer.disconnect();
     chrome.runtime.sendMessage({ action: "setBadgeSolved" });
   }
@@ -254,9 +250,8 @@ if (puzzle) {
       // so that we don't lose progress.
       window.onbeforeunload = () => {
         if (!currentlyStopped(record) && !currentlyUnstarted(record)) {
-          recordConcurrentEventBatch(
-            [{ type: "stop" }],
-            new Date().getTime(),
+          recordEventBatch(
+            [{ type: "stop", timestamp: new Date().getTime() }],
             storageKey,
           );
           chrome.runtime.sendMessage(
@@ -280,7 +275,7 @@ if (puzzle) {
                 let fill = mutation.target.data;
                 let cell = getCellSibling(mutation.target.parentElement);
                 if (cell) {
-                  newEvents.push({ type: "update", ...getXYForCell(cell), fill });
+                  newEvents.push({ type: "update", timestamp, ...getXYForCell(cell), fill });
                 }
               }
               break;
@@ -291,20 +286,20 @@ if (puzzle) {
               // - initial reveal/check for a given square inserts a <use> element
               for (const node of mutation.addedNodes) {
                 if (mutation.target === puzzle && node.querySelector(`.${congratsClass}`)) {
-                  newEvents.push({ type: "submit", success: true });
+                  newEvents.push({ type: "submit", timestamp, success: true });
                 } else if (node.classList?.contains(veilClass)) {
-                  newEvents.push({ type: "stop" });
+                  newEvents.push({ type: "stop", timestamp });
                 } else if (node.classList?.contains(revealedClass)) {
                   let cell = getCellSibling(node);
-                  if (cell) { newEvents.push({ type: "reveal", ...getXYForCell(cell) }); }
+                  if (cell) { newEvents.push({ type: "reveal", timestamp, ...getXYForCell(cell) }); }
                 } else if (node.classList?.contains(checkedClass)) {
                   let cell = getCellSibling(node);
-                  if (cell) { newEvents.push({ type: "check", ...getXYForCell(cell) }); }
+                  if (cell) { newEvents.push({ type: "check", timestamp, ...getXYForCell(cell) }); }
                 }
               }
               for (const node of mutation.removedNodes) {
                 if (node.classList?.contains(veilClass)) {
-                  newEvents.push({ type: "start" });
+                  newEvents.push({ type: "start", timestamp });
                 }
               }
               break;
@@ -315,16 +310,16 @@ if (puzzle) {
               // reveal a correct square, which we treat as a "check" event
               if (mutation.target.classList?.contains(revealedClass)) {
                 let cell = getCellSibling(mutation.target);
-                if (cell) { newEvents.push({ type: "reveal", ...getXYForCell(cell) }); }
+                if (cell) { newEvents.push({ type: "reveal", timestamp, ...getXYForCell(cell) }); }
               } else if (mutation.target.classList?.contains(checkedClass) ||
                          mutation.target.classList?.contains(confirmedClass)) {
                 let cell = getCellSibling(mutation.target);
-                if (cell) { newEvents.push({ type: "check", ...getXYForCell(cell) }); }
+                if (cell) { newEvents.push({ type: "check", timestamp, ...getXYForCell(cell) }); }
               } else if (eventLogLevel === "full" &&
                          mutation.target.classList?.contains(selectedClass) &&
                          !(mutation.oldValue.split(" ").includes(selectedClass))) {
                 let cell = getCellSibling(mutation.target);
-                if (cell) { newEvents.push({ type: "select", ...getXYForCell(cell) }); }
+                if (cell) { newEvents.push({ type: "select", timestamp, ...getXYForCell(cell) }); }
               } else if (eventLogLevel === "full" &&
                          mutation.target.classList?.contains(clueSelectedClass) &&
                          !(mutation.oldValue.split(" ").includes(clueSelectedClass))) {
@@ -337,13 +332,13 @@ if (puzzle) {
                   .find(elem => elem.classList?.contains(clueLabelClass))
                   ?.textContent || null;
                 if (clueSection && clueLabelClass) {
-                  newEvents.push({ type: "selectClue", clueSection, clueLabel });
+                  newEvents.push({ type: "selectClue", timestamp, clueSection, clueLabel });
                 }
               }
               break;
           }
         }
-        recordConcurrentEventBatch(newEvents, timestamp, storageKey);
+        recordEventBatch(newEvents, storageKey);
       };
 
       observer = new MutationObserver(puzzleCallback);
