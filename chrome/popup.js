@@ -122,15 +122,15 @@ document.getElementById("download-record").addEventListener("click", async () =>
           downloadRecord(result.record, {
             filename: suggestedRecordFilename(result.record, "json"),
           });
-          const msg = "Record download successfully requested";
+          const msg = "JSON save successfully requested";
           updateStatusBar(msg);
           console.log(msg);
         } else if (result?.error) {
-          const msg = `Failed to download record. Error: ${result.error}`;
+          const msg = `Failed to save JSON. Error: ${result.error}`;
           updateStatusBar(msg);
           console.log(msg);
         } else {
-          const msg = "Failed to download record, unspecified error";
+          const msg = "Failed to save JSON, unspecified error";
           updateStatusBar(msg);
           console.log(msg);
         }
@@ -151,15 +151,15 @@ document.getElementById("download-svg").addEventListener("click", async () => {
               filename: suggestedRecordFilename(result.record, "svg"),
             });
           });
-          const msg = "SVG download successfully requested";
+          const msg = "SVG save successfully requested";
           updateStatusBar(msg);
           console.log(msg);
         } else if (result?.error) {
-          const msg = `Failed to download SVG. Error: ${result.error}`;
+          const msg = `Failed to save SVG. Error: ${result.error}`;
           updateStatusBar(msg);
           console.log(msg);
         } else {
-          const msg = "Failed to download SVG, unspecified error";
+          const msg = "Failed to save SVG, unspecified error";
           updateStatusBar(msg);
           console.log(msg);
         }

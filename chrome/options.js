@@ -173,7 +173,7 @@ const buildRow = (rowId, record) => {
 
   const recordManagement = document.createElement("td");
   const recordDownloadButton = document.createElement("button");
-  recordDownloadButton.textContent = "Download JSON";
+  recordDownloadButton.textContent = "Save JSON";
   recordDownloadButton.addEventListener("click", () => {
     chrome.storage.local.get(rowId, (result) => {
       if (result[rowId]) {
@@ -184,7 +184,7 @@ const buildRow = (rowId, record) => {
     });
   });
   const recordDownloadImageButton = document.createElement("button");
-  recordDownloadImageButton.textContent = "Download SVG";
+  recordDownloadImageButton.textContent = "Save SVG";
   recordDownloadImageButton.addEventListener("click", () => {
     chrome.storage.local.get(rowId, (result) => {
       if (result[rowId]) {

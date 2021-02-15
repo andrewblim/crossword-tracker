@@ -22,7 +22,7 @@ It does this by tracking updates to the puzzle grid in the [DOM](https://develop
 
 You can leave a puzzle and come back to it. The extension will cache progress in Chrome synced storage.
 
-In either the extension popup menu or the settings page, you can also download cached puzzle records as [JSON](https://www.json.org/json-en.html) files or clear them out of the browser cache. I recommend
+In either the extension popup menu or the settings page, you can also save cached puzzle records as [JSON](https://www.json.org/json-en.html) files or clear them out of the browser cache.
 
 Once you have the JSON log, do whatever you want with it! For starters, this repo also contains an [image-gen](../image-gen/README.md) project that can convert a JSON log to an animated replay of your solve. I also encourage you to find other interesting applications - for example, if you amassed a large number of logs, from just yourself or from others too, you might be able to run interesting data analysis on solving technique or puzzle difficulty.
 

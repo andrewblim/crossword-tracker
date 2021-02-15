@@ -57,7 +57,7 @@ const recordStorageKey = function(title, date, byline) {
   return `record-${hashCode(JSON.stringify({ title, date, byline }))}`;
 }
 
-// Suggested filenames for download functionality
+// Suggested filenames for file-saving functionality
 const suggestedRecordFilename = function(record, suffix) {
   let filename = "";
   let url = new URL(record.url);
