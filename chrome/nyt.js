@@ -21,6 +21,7 @@ const blockClass = "Cell-block--1oNaD";
 const selectedClass = "Cell-selected--2PAbF";
 const revealedClass = "Shame-revealed--3jDzk";
 const checkedClass = "Shame-checked--3E9GW";
+const confirmedClass = "Shame-confirmed--32ADK";
 const congratsClass = "CongratsModal-congratsModalContent--19hpv";
 
 // per-page constants
@@ -308,11 +309,15 @@ if (puzzle) {
               }
               break;
             case "attributes":
-              // subsequent reveal/check (<use> element already there and gets modified)
+              // subsequent reveal/check
+              // either <use> element already there and gets modified
+              // or the <rect> is highlighted as "confirmed", if you check or
+              // reveal a correct square, which we treat as a "check" event
               if (mutation.target.classList?.contains(revealedClass)) {
                 let cell = getCellSibling(mutation.target);
                 if (cell) { newEvents.push({ type: "reveal", ...getXYForCell(cell) }); }
-              } else if (mutation.target.classList?.contains(checkedClass)) {
+              } else if (mutation.target.classList?.contains(checkedClass) ||
+                         mutation.target.classList?.contains(confirmedClass)) {
                 let cell = getCellSibling(mutation.target);
                 if (cell) { newEvents.push({ type: "check", ...getXYForCell(cell) }); }
               } else if (eventLogLevel === "full" &&
