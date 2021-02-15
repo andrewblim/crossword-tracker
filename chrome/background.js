@@ -35,6 +35,8 @@ chrome.runtime.onInstalled.addListener(() => {
           "imageUnfillableColor": "black",
           "imageSelectedColor": "yellow",
           "imageHighlightedColor": "lightblue",
+          "imageCheckColor": "orange",
+          "imageRevealColor": "red",
           "imageAnimationSpeed": 1.0,
           "nytSettings": {
             "eventFlushFrequency": 30,

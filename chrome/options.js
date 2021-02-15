@@ -16,6 +16,8 @@ chrome.storage.local.get(
     "imageUnfillableColor",
     "imageSelectedColor",
     "imageHighlightedColor",
+    "imageCheckColor",
+    "imageRevealColor",
     "imageAnimationSpeed",
     "nytSettings",
   ],
@@ -32,6 +34,8 @@ chrome.storage.local.get(
     document.getElementById("imageUnfillableColor").value = (result.imageUnfillableColor || "black");
     document.getElementById("imageSelectedColor").value = (result.imageSelectedColor || "yellow");
     document.getElementById("imageHighlightedColor").value = (result.imageHighlightedColor || "lightblue");
+    document.getElementById("imageCheckColor").value = (result.imageCheckColor || "orange");
+    document.getElementById("imageRevealColor").value = (result.imageRevealColor || "red");
     document.getElementById("imageAnimationSpeed").value = (result.imageAnimationSpeed || 1.0);
 
     document.getElementById("nyt-eventFlushFrequency").value = (
@@ -83,6 +87,8 @@ document.getElementById("image-options-save").addEventListener("click", () => {
       imageUnfillableColor: document.getElementById("imageUnfillableColor").value,
       imageSelectedColor: document.getElementById("imageSelectedColor").value,
       imageHighlightedColor: document.getElementById("imageHighlightedColor").value,
+      imageCheckColor: document.getElementById("imageCheckColor").value,
+      imageRevealColor: document.getElementById("imageRevealColor").value,
       imageAnimationSpeed: document.getElementById("imageAnimationSpeed").value,
     },
     () => {

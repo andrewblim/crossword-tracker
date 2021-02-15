@@ -34,6 +34,8 @@ const createSolveAnimation = function(record, imageCallback) {
       "imageUnfillableColor",
       "imageSelectedColor",
       "imageHighlightedColor",
+      "imageCheckColor",
+      "imageRevealColor",
       "imageAnimationSpeed",
     ],
     (settings) => {
@@ -54,6 +56,8 @@ const createSolveAnimationWithSettings = function(record, settings) {
   const unfillableColor = settings.imageUnfillableColor;
   const selectedColor = settings.imageSelectedColor;
   const highlightedColor = settings.imageHighlightedColor;
+  const checkColor = settings.imageCheckColor;
+  const revealColor = settings.imageRevealColor;
   const animationSpeed = settings.imageAnimationSpeed;
 
   document.getElementById("solve-animation")?.remove();
@@ -235,6 +239,18 @@ const createSolveAnimationWithSettings = function(record, settings) {
     }
   }
 
+  // Empty graphical groups to which we add triangles if there are any check or
+  // reveal events
+
+  const checkG = document.createElementNS(svgNS, "g");
+  checkG.setAttribute("visibility", "hidden");
+  checkG.setAttribute("stroke", gridColor);
+  const checkByPosition = {};
+  const revealG = document.createElementNS(svgNS, "g");
+  revealG.setAttribute("visibility", "hidden");
+  revealG.setAttribute("stroke", gridColor);
+  const revealByPosition = {};
+
   // Animations for puzzle
 
   let timer;
@@ -311,6 +327,42 @@ const createSolveAnimationWithSettings = function(record, settings) {
             }
           }
           highlightedSquares = positionsByClue[event.clueSection][event.clueLabel];
+          break;
+        case "check":
+          posKey = `${event.x}-${event.y}`;
+          let checkMarker = checkByPosition[posKey];
+          if (checkMarker !== null) {
+            checkMarker = document.createElementNS(svgNS, "polygon")
+            let sqX = parseInt(squaresByPosition[posKey].getAttribute("x"));
+            let sqY = parseInt(squaresByPosition[posKey].getAttribute("y"));
+            checkMarker.setAttribute("points", [
+              `${sqX + 0.75 * sqSize},${sqY}`,
+              `${sqX + sqSize},${sqY}`,
+              `${sqX + sqSize},${sqY + 0.25*sqSize}`,
+            ].join(" "));
+            beginSetChild(checkMarker, "visibility", "visible", timeMS);
+            beginSetChild(checkMarker, "fill", checkColor, timeMS);
+            checkG.append(checkMarker);
+            checkByPosition[posKey] = checkMarker;
+          }
+          break;
+        case "reveal":
+          posKey = `${event.x}-${event.y}`;
+          let revealMarker = revealByPosition[posKey];
+          if (revealMarker !== null) {
+            revealMarker = document.createElementNS(svgNS, "polygon")
+            let sqX = parseInt(squaresByPosition[posKey].getAttribute("x"));
+            let sqY = parseInt(squaresByPosition[posKey].getAttribute("y"));
+            revealMarker.setAttribute("points", [
+              `${sqX + 0.75 * sqSize},${sqY}`,
+              `${sqX + sqSize},${sqY}`,
+              `${sqX + sqSize},${sqY + 0.25*sqSize}`,
+            ].join(" "));
+            beginSetChild(revealMarker, "visibility", "visible", timeMS);
+            beginSetChild(revealMarker, "fill", revealColor, timeMS);
+            revealG.append(revealMarker);
+            revealByPosition[posKey] = revealMarker;
+          }
           break;
         case "stop":
           currentlyStopped = true;
@@ -396,8 +448,10 @@ const createSolveAnimationWithSettings = function(record, settings) {
   svg.append(cluesG);
   svg.append(labelsG);
   svg.append(fillG);
+  svg.append(checkG);
+  svg.append(revealG); // must go after checkG so that it appears on top
 
-  // We must append it to the body for the next section, which relies on
+  // We must append the svg to the body for the next section, which relies on
   // computed text lengths, to work. At this point it becomes visible.
   document.getElementsByTagName("BODY")[0].append(svg);
 
