@@ -1,6 +1,6 @@
 # Log format
 
-The crossword log file consists of a JSON object with the keys described below. The behavior of
+The crossword log file consists of a JSON object with the keys described below.
 
 ## `version`
 

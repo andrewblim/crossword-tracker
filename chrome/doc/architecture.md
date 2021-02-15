@@ -39,7 +39,7 @@ Clicking on these buttons causes the popup page to send a message to the active 
 Content scripts should accept messages in the format `{ action, ... }`. They should all accept the following `action` values:
 
 - `ping`: simply sends a successful response
-- `getRecord`: sends a response that also includes a key `record` with the record. This is used by the popup to save the record as a JSON file - Chrome's download functionality cannot happen in a content script, so the popup fetches the record and does the work itself.
+- `getRecord`: sends a response that also includes a key `record` with the record.
 - `logRecord`: logs the current record to the developer console
 - `cacheRecord`: caches the record in Chrome storage (should pass on a message to the service worker)
 - `clearAndResetRecord`: clears the record from Chrome storage (should pass on a `clearRecord` message to the service worker) and creates a fresh record based on the puzzle's current state.
