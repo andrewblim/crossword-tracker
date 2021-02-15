@@ -331,7 +331,7 @@ const createSolveAnimationWithSettings = function(record, settings) {
         case "check":
           posKey = `${event.x}-${event.y}`;
           let checkMarker = checkByPosition[posKey];
-          if (checkMarker !== null) {
+          if (checkMarker === undefined) {
             checkMarker = document.createElementNS(svgNS, "polygon")
             let sqX = parseInt(squaresByPosition[posKey].getAttribute("x"));
             let sqY = parseInt(squaresByPosition[posKey].getAttribute("y"));
@@ -349,7 +349,7 @@ const createSolveAnimationWithSettings = function(record, settings) {
         case "reveal":
           posKey = `${event.x}-${event.y}`;
           let revealMarker = revealByPosition[posKey];
-          if (revealMarker !== null) {
+          if (revealMarker === undefined) {
             revealMarker = document.createElementNS(svgNS, "polygon")
             let sqX = parseInt(squaresByPosition[posKey].getAttribute("x"));
             let sqY = parseInt(squaresByPosition[posKey].getAttribute("y"));
