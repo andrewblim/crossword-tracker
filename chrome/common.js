@@ -36,20 +36,25 @@ const humanizedRecordName = function(record) {
   return name.join(" - ");
 }
 
-// Synchronously called SHA1 of a record - useful for identifiers and storage
-// keys. Thanks to https://jameshfisher.com/2017/10/30/web-cryptography-api-hello-world/
-// for very helpful examples of how to use crypto.subtle.
+// Implementation of Java's hashCode - just need some simple hash function.
+// From https://stackoverflow.com/questions/6122571/simple-non-secure-hash-function-for-javascript
+// with minor modifications
 
-const sha1Object = async function(obj) {
-  const buf = await crypto.subtle.digest(
-    "SHA-1",
-    new TextEncoder("utf-8").encode(JSON.stringify(obj)),
-  );
-  return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, "0")).join("");
+const hashCode = function(x) {
+  let hash = 0;
+  if (x.length == 0) {
+    return hash;
+  }
+  for (let i = 0; i < x.length; i++) {
+    var char = x.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash;
 }
 
 const recordStorageKey = function(title, date, byline) {
-  return "record-" + sha1Object({ title, date, byline });
+  return `record-${hashCode(JSON.stringify({ title, date, byline }))}`;
 }
 
 // Suggested filenames for download functionality
