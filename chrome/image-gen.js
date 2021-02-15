@@ -255,7 +255,7 @@ const createSolveAnimationWithSettings = function(record, settings) {
           posKey = `${event.x}-${event.y}`;
           if (fillByPosition[posKey] !== undefined) {
             // make any existing fill invisible starting now
-            fillByPosition[posKey].setAttribute("end", timeMS);
+            endSetChild(fillByPosition[posKey], timeMS);
           }
           delete fillByPosition[posKey];
           if (event.fill !== "") {
