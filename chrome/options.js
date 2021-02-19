@@ -1,46 +1,23 @@
 "use strict";
 
 // Functions to populate and save settings
+// assumes settings.js is run first
 
 chrome.storage.local.get(
-  [
-    "solverName",
-    "eventLogLevel",
-    "logUserAgent",
-    "imageWidth",
-    "imageHeight",
-    "imageMargin",
-    "imageBackgroundColor",
-    "imageGridColor",
-    "imageFillableColor",
-    "imageUnfillableColor",
-    "imageSelectedColor",
-    "imageHighlightedColor",
-    "imageCheckColor",
-    "imageRevealColor",
-    "imageAnimationSpeed",
-    "nytSettings",
-  ],
+  Object.keys(appSettings),
   (result) => {
-    document.getElementById("solverName").value = (result.solverName || "");
-    document.getElementById("eventLogLevel").value = (result.eventLogLevel || "full");
-    document.getElementById("logUserAgent").checked = (result.logUserAgent || false);
-    document.getElementById("imageWidth").value = (result.imageWidth || 500);
-    document.getElementById("imageHeight").value = (result.imageHeight || 750);
-    document.getElementById("imageMargin").value = (result.imageMargin || 50);
-    document.getElementById("imageBackgroundColor").value = (result.imageBackgroundColor || "lightgray");
-    document.getElementById("imageGridColor").value = (result.imageGridColor || "gray");
-    document.getElementById("imageFillableColor").value = (result.imageFillableColor || "white");
-    document.getElementById("imageUnfillableColor").value = (result.imageUnfillableColor || "black");
-    document.getElementById("imageSelectedColor").value = (result.imageSelectedColor || "yellow");
-    document.getElementById("imageHighlightedColor").value = (result.imageHighlightedColor || "lightblue");
-    document.getElementById("imageCheckColor").value = (result.imageCheckColor || "orange");
-    document.getElementById("imageRevealColor").value = (result.imageRevealColor || "red");
-    document.getElementById("imageAnimationSpeed").value = (result.imageAnimationSpeed || 1.0);
-
-    document.getElementById("nyt-eventFlushFrequency").value = (
-      result.nytSettings?.eventFlushFrequency || 30
-    );
+    for (const groupKey of Object.keys(appSettings)) {
+      for (const settingKey of Object.keys(appSettings[groupKey])) {
+        if (result[groupKey] && result[groupKey][settingKey]) {
+          const value = result[groupKey][settingKey];
+          if (appSettings[groupKey][settingKey].type === "boolean") {
+            document.getElementById(`${groupKey}-${settingKey}`).checked = value;
+          } else {
+            document.getElementById(`${groupKey}-${settingKey}`).value = value;
+          }
+        }
+      }
+    }
   },
 );
 
@@ -50,91 +27,54 @@ document.getElementById("general-options").querySelectorAll("input, select").for
   });
 });
 
-document.getElementById("general-options-save").addEventListener("click", () => {
-  chrome.storage.local.set(
-    {
-      solverName: document.getElementById("solverName").value,
-      eventLogLevel: document.getElementById("eventLogLevel").value,
-      logUserAgent: document.getElementById("logUserAgent").checked,
-    },
-    () => {
-      let msg;
-      if (chrome.runtime.lastError) {
-        msg = `Failed to save settings: ${chrome.runtime.lastError}`;
-      } else {
-        msg = "Settings saved";
+for (const groupKey of Object.keys(appSettings)) {
+  // save action for each section
+  document.getElementById(`${groupKey}-options-save`).addEventListener("click", () => {
+    const update = {};
+    for (const settingKey of Object.keys(appSettings[groupKey])) {
+      let value;
+      switch (appSettings[groupKey][settingKey].type) {
+        case "boolean":
+          value = document.getElementById(`${groupKey}-${settingKey}`).checked;
+          break;
+        case "number":
+          value = Number(document.getElementById(`${groupKey}-${settingKey}`).value);
+          break;
+        default:
+          value = document.getElementById(`${groupKey}-${settingKey}`).value;
+          break;
       }
-      document.getElementById("general-options-save-message").textContent = msg;
-      console.log(msg);
-    },
-  );
-});
-
-document.getElementById("image-options").querySelectorAll("input, select").forEach((elem) => {
-  elem.addEventListener("change", () => {
-    document.getElementById("image-options-save-message").textContent = "";
-  });
-});
-
-document.getElementById("image-options-save").addEventListener("click", () => {
-  chrome.storage.local.set(
-    {
-      imageWidth: document.getElementById("imageWidth").value,
-      imageHeight: document.getElementById("imageHeight").value,
-      imageBackgroundColor: document.getElementById("imageBackgroundColor").value,
-      imageGridColor: document.getElementById("imageGridColor").value,
-      imageFillableColor: document.getElementById("imageFillableColor").value,
-      imageUnfillableColor: document.getElementById("imageUnfillableColor").value,
-      imageSelectedColor: document.getElementById("imageSelectedColor").value,
-      imageHighlightedColor: document.getElementById("imageHighlightedColor").value,
-      imageCheckColor: document.getElementById("imageCheckColor").value,
-      imageRevealColor: document.getElementById("imageRevealColor").value,
-      imageAnimationSpeed: document.getElementById("imageAnimationSpeed").value,
-    },
-    () => {
-      let msg;
-      if (chrome.runtime.lastError) {
-        msg = `Failed to save settings: ${chrome.runtime.lastError}`;
-      } else {
-        msg = "Settings saved";
-      }
-      document.getElementById("image-options-save-message").textContent = msg;
-      console.log(msg);
-    },
-  );
-});
-
-document.getElementById("nyt-options").querySelectorAll("input, select").forEach((elem) => {
-  elem.addEventListener("change", () => {
-    document.getElementById("nyt-options-save-message").textContent = "";
-  });
-});
-
-document.getElementById("nyt-options-save").addEventListener("click", () => {
-  const eventFlushFrequency = parseInt(document.getElementById("nyt-eventFlushFrequency").value) || null;
-  if (eventFlushFrequency && eventFlushFrequency <= 0) {
-    const msg = "Flush frequency must be parseable to a positive integer, or blank"
-    document.getElementById("nyt-options-save-message").textContent = msg;
-  } else {
-    chrome.storage.local.set(
-      {
-        nytSettings: {
-          eventFlushFrequency: parseInt(document.getElementById("nyt-eventFlushFrequency").value) || null,
-        },
-      },
-      () => {
+      update[settingKey] = value;
+    }
+    let errors = [];
+    if (appSettingsValidation[groupKey] !== undefined) {
+      errors = appSettingsValidation[groupKey](update);
+    }
+    if (errors.length == 0) {
+      chrome.storage.local.set({ [groupKey]: update }, () => {
         let msg;
         if (chrome.runtime.lastError) {
           msg = `Failed to save settings: ${chrome.runtime.lastError}`;
         } else {
           msg = "Settings saved";
         }
-        document.getElementById("nyt-options-save-message").textContent = msg;
+        document.getElementById(`${groupKey}-options-save-message`).textContent = msg;
         console.log(msg);
-      },
-    );
-  }
-});
+      });
+    } else {
+      let msg = "Settings not saved: " + errors.join("; ");
+      document.getElementById(`${groupKey}-options-save-message`).textContent = msg;
+      console.log(msg);
+    }
+  });
+
+  // reset the save message if there are any changes in the section
+  document.getElementById(`${groupKey}-options`).querySelectorAll("input, select").forEach((elem) => {
+    elem.addEventListener("change", () => {
+      document.getElementById(`${groupKey}-options-save-message`).textContent = "";
+    });
+  });
+}
 
 // Build and update rows in the table of records
 

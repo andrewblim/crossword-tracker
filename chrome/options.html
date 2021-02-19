@@ -12,16 +12,16 @@
       <div class="options-section">
         <h2>General options</h2>
         <div class="options-set" id="general-options">
-          <label for="solverName">Your name</label>
+          <label for="general-solverName">Your name</label>
           <div>
-            <input type="text" id="solverName"></input>
+            <input type="text" id="general-solverName"></input>
           </div>
           <div>
             Your name. This is recorded on the log.
           </div>
-          <label for="eventLogLevel">Log level</label>
+          <label for="general-eventLogLevel">Log level</label>
           <div>
-            <select id="eventLogLevel">
+            <select id="general-eventLogLevel">
               <option value="basic">Events only</option>
               <option value="full">Events + navigation</option>
             </select>
@@ -29,9 +29,9 @@
           <div>
             Amount of detail to log. "Events only" only captures basic game events. "Events + navigation" also captures your navigation around the grid and the clues.
           </div>
-          <label for="logUserAgent">Log user agent</label>
+          <label for="general-logUserAgent">Log user agent</label>
           <div>
-            <input type="checkbox" id="logUserAgent"></input>
+            <input type="checkbox" id="general-logUserAgent"></input>
           </div>
           <div>
             Whether or not to log user-agent info on the log. Changing this will not affect saved logs immediately, but the updated preference will be reflected the next time you open the corresponding puzzle.
@@ -46,100 +46,12 @@
         </div>
       </div>
       <div class="options-section">
-        <h2>Image generation options</h2>
-        <p>
-          All colors should be entered as <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value">CSS-recognized colors</a>.
-        </p>
-        <div class="options-set" id="image-options">
-          <label for="imageWidth">Image width (px)</label>
-          <div>
-            <input type="text" id="imageWidth"></input>
-          </div>
-          <div>
-          </div>
-          <label for="imageHeight">Image height (px)</label>
-          <div>
-            <input type="text" id="imageHeight"></input>
-          </div>
-          <div>
-          </div>
-          <label for="imageMargin">Margin around the image (px)</label>
-          <div>
-            <input type="text" id="imageMargin"></input>
-          </div>
-          <div>
-          </div>
-          <label for="imageBackgroundColor">Background color</label>
-          <div>
-            <input type="text" id="imageBackgroundColor"></input>
-          </div>
-          <div>
-          </div>
-          <label for="imageGridColor">Grid line color</label>
-          <div>
-            <input type="text" id="imageGridColor"></input>
-          </div>
-          <div>
-          </div>
-          <label for="imageFillableColor">Color of fillable squares</label>
-          <div>
-            <input type="text" id="imageFillableColor"></input>
-          </div>
-          <div>
-          </div>
-          <label for="imageUnfillableColor">Color of unfillable squares</label>
-          <div>
-            <input type="text" id="imageUnfillableColor"></input>
-          </div>
-          <div>
-          </div>
-          <label for="imageSelectedColor">Color of selected square</label>
-          <div>
-            <input type="text" id="imageSelectedColor"></input>
-          </div>
-          <div>
-          </div>
-          <label for="imageHighlightedColor">Color of highlighted squares</label>
-          <div>
-            <input type="text" id="imageHighlightedColor"></input>
-          </div>
-          <div>
-          </div>
-          <label for="imageCheckColor">Color of checked square indicator</label>
-          <div>
-            <input type="text" id="imageCheckColor"></input>
-          </div>
-          <div>
-          </div>
-          <label for="imageRevealColor">Color of revealed square indicator</label>
-          <div>
-            <input type="text" id="imageRevealColor"></input>
-          </div>
-          <div>
-          </div>
-          <label for="imageAnimationSpeed">Animation speed scaling factor</label>
-          <div>
-            <input type="text" id="imageAnimationSpeed"></input>
-          </div>
-          <div>
-            A positive number. 1.0 = real time, &gt; 1.0 = sped up, &lt; 1.0 = slowed down.
-          </div>
-        </div>
-        <div class="options-set">
-          <div>
-            <button id="image-options-save">Save</button>
-          </div>
-          <div id="image-options-save-message">
-          </div>
-        </div>
-      </div>
-      <div class="options-section">
         <h2>Site-specific settings</h2>
         <h3>New York Times</h3>
         <div class="options-set" id="nyt-options">
-          <label for="nyt-eventFlushFrequency">Auto-save frequency</label>
+          <label for="nyt-autosaveFrequency">Auto-save frequency</label>
           <div>
-            <input type="text" id="nyt-eventFlushFrequency"></input>
+            <input type="text" id="nyt-autosaveFrequency"></input>
           </div>
           <div>
             The frequency with which to auto-save event logs to browser storage while solving. (This is purely precautionary, because event logs are automatically saved anyway when solving or stopping the puzzle.) Every this-many events, we will save. Leave blank for no auto-save.
@@ -154,9 +66,100 @@
         </div>
       </div>
       <div class="options-section">
+        <h2>Image generation options</h2>
+        <p>
+          All colors should be entered as <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/color_value">CSS recognized colors or hex values</a>.
+        </p>
+        <div class="options-set" id="image-options">
+          <label for="image-width">Image width (px)</label>
+          <div>
+            <input type="text" id="image-width"></input>
+          </div>
+          <div>
+          </div>
+          <label for="image-height">Image height (px)</label>
+          <div>
+            <input type="text" id="image-height"></input>
+          </div>
+          <div>
+          </div>
+          <label for="image-margin">Margin around the image (px)</label>
+          <div>
+            <input type="text" id="image-margin"></input>
+          </div>
+          <div>
+          </div>
+          <label for="image-backgroundColor">Background color</label>
+          <div>
+            <input type="text" id="image-backgroundColor"></input>
+          </div>
+          <div>
+          </div>
+          <label for="image-gridColor">Grid line color</label>
+          <div>
+            <input type="text" id="image-gridColor"></input>
+          </div>
+          <div>
+          </div>
+          <label for="image-fillableColor">Color of fillable squares</label>
+          <div>
+            <input type="text" id="image-fillableColor"></input>
+          </div>
+          <div>
+          </div>
+          <label for="image-unfillableColor">Color of unfillable squares</label>
+          <div>
+            <input type="text" id="image-unfillableColor"></input>
+          </div>
+          <div>
+          </div>
+          <label for="image-selectedColor">Color of selected square</label>
+          <div>
+            <input type="text" id="image-selectedColor"></input>
+          </div>
+          <div>
+          </div>
+          <label for="image-highlightedColor">Color of highlighted squares</label>
+          <div>
+            <input type="text" id="image-highlightedColor"></input>
+          </div>
+          <div>
+          </div>
+          <label for="image-checkColor">Color of checked square indicator</label>
+          <div>
+            <input type="text" id="image-checkColor"></input>
+          </div>
+          <div>
+          </div>
+          <label for="image-revealColor">Color of revealed square indicator</label>
+          <div>
+            <input type="text" id="image-revealColor"></input>
+          </div>
+          <div>
+          </div>
+          <label for="image-animationSpeed">Animation speed scaling factor</label>
+          <div>
+            <input type="text" id="image-animationSpeed"></input>
+          </div>
+          <div>
+            A positive number. 1.0 = real time, &gt; 1.0 = sped up, &lt; 1.0 = slowed down.
+          </div>
+        </div>
+        <div class="options-set">
+          <div>
+            <button id="image-options-save">Save</button>
+          </div>
+          <div id="image-options-save-message">
+          </div>
+        </div>
+      </div>
+      <div class="options-section">
         <h2>Record management</h2>
         <p>
           If you want to keep your records permanently, please save the JSON files somewhere permanent for yourself! Don't rely on browser storage being permanent. The JSON file can generate SVGs, but the SVG is not sufficient to generate the JSON, so if you want accurate record-keeping, make sure to get the JSON file and not just the SVG.
+        </p>
+        <p>
+          Also, if you modify any image generation options above, don't forget to save before generating images.
         </p>
         <div class="options-set">
           <table id="record-listing">
@@ -187,7 +190,8 @@
       <!-- <svg id="solve-animation" version="1.1" baseprofile="full" width="500" height="750" xmlns="http://www.w3.org/2000/svg"><rect width="500" height="750" fill="gray"></rect></svg> -->
     </div>
     <script src="common.js"></script>
-    <script src="image-gen.js"></script>
+    <script src="settings.js"></script>
     <script src="options.js"></script>
+    <script src="image-gen.js"></script>
   </body>
 </html>

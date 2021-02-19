@@ -9,6 +9,7 @@ This is only set up for install via developer mode at the moment.
 1. Clone this repo.
 2. Open the Chrome extensions page and enable "Developer mode".
 3. Install this directory as an unpacked extension.
+4. I suggest you then go straight to its preferences page and indicate your name, so that it's included on any records you generate.
 
 See official directions for installing extensions in developer mode [here](https://developer.chrome.com/docs/extensions/mv3/getstarted/).
 

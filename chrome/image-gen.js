@@ -25,18 +25,18 @@ const endSetChild = function(elem, end) {
 const createSolveAnimation = function(record, imageCallback) {
   chrome.storage.local.get(
     [
-      "imageWidth",
-      "imageHeight",
-      "imageMargin",
-      "imageBackgroundColor",
-      "imageGridColor",
-      "imageFillableColor",
-      "imageUnfillableColor",
-      "imageSelectedColor",
-      "imageHighlightedColor",
-      "imageCheckColor",
-      "imageRevealColor",
-      "imageAnimationSpeed",
+      "width",
+      "height",
+      "margin",
+      "backgroundColor",
+      "gridColor",
+      "fillableColor",
+      "unfillableColor",
+      "selectedColor",
+      "highlightedColor",
+      "checkColor",
+      "revealColor",
+      "animationSpeed",
     ],
     (settings) => {
       const imageElem = createSolveAnimationWithSettings(record, settings);
@@ -47,18 +47,18 @@ const createSolveAnimation = function(record, imageCallback) {
 }
 
 const createSolveAnimationWithSettings = function(record, settings) {
-  const width = settings.imageWidth;
-  const height = settings.imageHeight;
-  const margin = settings.imageMargin;
-  const backgroundColor = settings.imageBackgroundColor;
-  const gridColor = settings.imageGridColor;
-  const fillableColor = settings.imageFillableColor;
-  const unfillableColor = settings.imageUnfillableColor;
-  const selectedColor = settings.imageSelectedColor;
-  const highlightedColor = settings.imageHighlightedColor;
-  const checkColor = settings.imageCheckColor;
-  const revealColor = settings.imageRevealColor;
-  const animationSpeed = settings.imageAnimationSpeed;
+  const width = settings.width;
+  const height = settings.height;
+  const margin = settings.margin;
+  const backgroundColor = settings.backgroundColor;
+  const gridColor = settings.gridColor;
+  const fillableColor = settings.fillableColor;
+  const unfillableColor = settings.unfillableColor;
+  const selectedColor = settings.selectedColor;
+  const highlightedColor = settings.highlightedColor;
+  const checkColor = settings.checkColor;
+  const revealColor = settings.revealColor;
+  const animationSpeed = settings.animationSpeed;
 
   document.getElementById("solve-animation")?.remove();
 

@@ -195,9 +195,9 @@ const recordEventBatch = function (events, storageKey) {
 
   // cache the record on stoppages, submits, or just if it's been a while
   let enoughEventsToRecord = false;
-  if (eventFlushFrequency) {
-    eventsSinceLastFlush += events.length;
-    enoughEventsToRecord = eventsSinceLastFlush >= eventFlushFrequency;
+  if (autosaveFrequency) {
+    eventsSinceLastSave += events.length;
+    enoughEventsToRecord = eventsSinceLastSave >= autosaveFrequency;
   }
   if (hasStoppage || hasSuccessfulSubmit || enoughEventsToRecord) {
     console.log(`Saving to browser storage (stoppage: ${hasStoppage}, ` +
@@ -206,7 +206,7 @@ const recordEventBatch = function (events, storageKey) {
     chrome.runtime.sendMessage(
       { action: "cacheRecord", key: storageKey, record },
       (result) => {
-        if (result && result.success) { eventsSinceLastFlush = 0; }
+        if (result && result.success) { eventsSinceLastSave = 0; }
       },
     );
   }
@@ -217,8 +217,8 @@ const recordEventBatch = function (events, storageKey) {
 };
 
 let record, observer;
-let eventFlushFrequency, eventLogLevel;
-let eventsSinceLastFlush = 0;
+let autosaveFrequency, eventLogLevel;
+let eventsSinceLastSave = 0;
 
 // Only do anything if we were able to find the puzzle element.
 
@@ -235,7 +235,7 @@ if (puzzle) {
     (result) => {
       // Get event-logging settings
       eventLogLevel = result.eventLogLevel || "full";
-      eventFlushFrequency = result.nytSettings?.eventFlushFrequency;
+      autosaveFrequency = result.nytSettings?.autosaveFrequency;
 
       // Set up a new record variable or get an existing one from storage, then
       // either way, update with latest info
@@ -364,7 +364,7 @@ if (puzzle) {
                   sendResponse({ success: false, error: chrome.runtime.lastError });
                 } else if (result.success) {
                   sendResponse(result);
-                  eventsSinceLastFlush = 0;
+                  eventsSinceLastSave = 0;
                 } else {
                   sendResponse(result);
                 }

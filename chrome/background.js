@@ -1,49 +1,24 @@
 "use strict";
 
+importScripts("settings.js");
+
 // Default preferences to set on initial install
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get(
-    [
-      "solverName",
-      "eventLogLevel",
-      "logUserAgent",
-      "imageWidth",
-      "imageHeight",
-      "imageMargin",
-      "imageBackgroundColor",
-      "imageGridColor",
-      "imageFillableColor",
-      "imageUnfillableColor",
-      "imageSelectedColor",
-      "imageHighlightedColor",
-      "imageAnimationSpeed",
-      "nytSettings",
-    ],
-    (results) => {
-      const update = Object.assign(
-        {
-          "solverName": "",
-          "eventLogLevel": "full",
-          "logUserAgent": false,
-          "imageWidth": 500,
-          "imageHeight": 750,
-          "imageMargin": 50,
-          "imageBackgroundColor": "lightgray",
-          "imageGridColor": "gray",
-          "imageFillableColor": "white",
-          "imageUnfillableColor": "black",
-          "imageSelectedColor": "yellow",
-          "imageHighlightedColor": "lightblue",
-          "imageCheckColor": "orange",
-          "imageRevealColor": "red",
-          "imageAnimationSpeed": 1.0,
-          "nytSettings": {
-            "eventFlushFrequency": 30,
-          },
-        },
-        results,
-      )
+    Object.keys(appSettings),
+    (result) => {
+      const update = {};
+      for (const groupKey of Object.keys(appSettings)) {
+        update[groupKey] = {};
+        for (const settingKey of Object.keys(appSettings[groupKey])) {
+          if (result[groupKey] && result[groupKey][settingKey]) {
+            update[groupKey][settingKey] = result[groupKey][settingKey];
+          } else {
+            update[groupKey][settingKey] = appSettings[groupKey][settingKey].default;
+          }
+        }
+      }
       chrome.storage.local.set(update);
     },
   );
