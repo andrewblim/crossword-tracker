@@ -62,7 +62,7 @@ const appSettingsInfo = [
         settingKey: "height",
         name: "Height (px)",
         type: "number",
-        default: 750,
+        default: 700,
       },
       {
         settingKey: "margin",

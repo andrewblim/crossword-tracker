@@ -231,18 +231,18 @@ if (puzzle) {
   const storageKey = recordStorageKey(title, date, byline);
 
   chrome.storage.local.get(
-    [storageKey, "solverName", "eventLogLevel", "logUserAgent", "nytSettings"],
+    [storageKey, "general", "nyt"],
     (result) => {
       // Get event-logging settings
-      eventLogLevel = result.eventLogLevel || "full";
-      autosaveFrequency = result.nytSettings?.autosaveFrequency || 0;
+      eventLogLevel = result.general.eventLogLevel || "full";
+      autosaveFrequency = result.nyt?.autosaveFrequency || 0;
 
       // Set up a new record variable or get an existing one from storage, then
       // either way, update with latest info
       record = result[storageKey] || {};
       let userInfo = {};
-      if (result.solverName) { userInfo.solverName = result.solverName }
-      if (result.logUserAgent) { userInfo.userAgent = navigator.userAgent }
+      if (result.general.solverName) { userInfo.solverName = result.general.solverName }
+      if (result.general.logUserAgent) { userInfo.userAgent = navigator.userAgent }
       updateRecordMetadata(record, userInfo, puzzle);
 
       // If we navigate away/close tab, and there has been at least one event,

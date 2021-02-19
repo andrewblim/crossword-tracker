@@ -12,7 +12,7 @@ const beginSetChild = function(elem, attributeName, to, begin) {
   newSet.setAttribute("to", to);
   newSet.setAttribute("begin", begin);
   elem.append(newSet);
-}
+};
 
 const endSetChild = function(elem, end) {
   for (const child of elem.children) {
@@ -20,31 +20,15 @@ const endSetChild = function(elem, end) {
       child.setAttribute("end", end);
     }
   }
-}
+};
 
 const createSolveAnimation = function(record, imageCallback) {
-  chrome.storage.local.get(
-    [
-      "width",
-      "height",
-      "margin",
-      "backgroundColor",
-      "gridColor",
-      "fillableColor",
-      "unfillableColor",
-      "selectedColor",
-      "highlightedColor",
-      "checkColor",
-      "revealColor",
-      "animationSpeed",
-    ],
-    (settings) => {
-      const imageElem = createSolveAnimationWithSettings(record, settings);
-      imageCallback(imageElem);
-      imageElem.remove();
-    }
-  );
-}
+  chrome.storage.local.get("image", ({ image }) => {
+    const imageElem = createSolveAnimationWithSettings(record, image);
+    imageCallback(imageElem);
+    imageElem.remove();
+  });
+};
 
 const createSolveAnimationWithSettings = function(record, settings) {
   const width = settings.width;
@@ -511,4 +495,4 @@ const createSolveAnimationWithSettings = function(record, settings) {
   }
 
   return svg;
-}
+};

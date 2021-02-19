@@ -2,21 +2,22 @@
 
 // Minor amounts of current user settings displayed at top
 chrome.storage.local.get(
-  ["solverName", "eventLogLevel"],
-  ({ solverName, eventLogLevel }) => {
+  ["general"],
+  ({ general }) => {
     const solvingAsElem = document.getElementById("solving-as");
-    if (solverName && solverName !== "") {
-      solvingAsElem.textContent = `Solving as: ${solverName}`;
+    if (general.solverName && general.solverName !== "") {
+      solvingAsElem.textContent = `Solving as: ${general.solverName}`;
     } else {
       solvingAsElem.textContent = "Anonymous solver (set name in preferences)";
     }
     const eventLogLevelElem = document.getElementById("event-log-level");
-    switch (eventLogLevel) {
+    switch (general.eventLogLevel) {
       case "full":
         eventLogLevelElem.textContent = "Logging events + navigation";
         break;
       default:
         eventLogLevelElem.textContent = "Logging events only";
+        break;
     }
 });
 
