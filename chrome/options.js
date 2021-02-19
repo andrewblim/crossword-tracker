@@ -3,75 +3,66 @@
 // Functions to populate and save settings
 // assumes settings.js is run first
 
-chrome.storage.local.get(
-  Object.keys(appSettings),
-  (result) => {
-    for (const groupKey of Object.keys(appSettings)) {
-      for (const settingKey of Object.keys(appSettings[groupKey])) {
-        if (result[groupKey] && result[groupKey][settingKey]) {
-          const value = result[groupKey][settingKey];
-          if (appSettings[groupKey][settingKey].type === "boolean") {
-            document.getElementById(`${groupKey}-${settingKey}`).checked = value;
-          } else {
-            document.getElementById(`${groupKey}-${settingKey}`).value = value;
-          }
+chrome.storage.local.get(appSettingsInfo.map(x => x.storageKey), (result) => {
+  for (const info of appSettingsInfo) {
+    for (const setting of info.settings) {
+      if (result[info.storageKey] && result[info.storageKey][setting.settingKey]) {
+        const value = result[info.storageKey][setting.settingKey];
+        if (setting.type === "boolean") {
+          document.getElementById(`${info.storageKey}-${setting.settingKey}`).checked = value;
+        } else {
+          document.getElementById(`${info.storageKey}-${setting.settingKey}`).value = value;
         }
       }
     }
-  },
-);
-
-document.getElementById("general-options").querySelectorAll("input, select").forEach((elem) => {
-  elem.addEventListener("change", () => {
-    document.getElementById("general-options-save-message").textContent = "";
-  });
+  }
 });
 
-for (const groupKey of Object.keys(appSettings)) {
+for (const info of appSettingsInfo) {
   // save action for each section
-  document.getElementById(`${groupKey}-options-save`).addEventListener("click", () => {
+  document.getElementById(`${info.storageKey}-options-save`).addEventListener("click", () => {
     const update = {};
-    for (const settingKey of Object.keys(appSettings[groupKey])) {
+    for (const setting of info.settings) {
       let value;
-      switch (appSettings[groupKey][settingKey].type) {
+      switch (setting.type) {
         case "boolean":
-          value = document.getElementById(`${groupKey}-${settingKey}`).checked;
+          value = document.getElementById(`${info.storageKey}-${setting.settingKey}`).checked;
           break;
         case "number":
-          value = Number(document.getElementById(`${groupKey}-${settingKey}`).value);
+          value = Number(document.getElementById(`${info.storageKey}-${setting.settingKey}`).value);
           break;
         default:
-          value = document.getElementById(`${groupKey}-${settingKey}`).value;
+          value = document.getElementById(`${info.storageKey}-${setting.settingKey}`).value;
           break;
       }
-      update[settingKey] = value;
+      update[setting.settingKey] = value;
     }
     let errors = [];
-    if (appSettingsValidation[groupKey] !== undefined) {
-      errors = appSettingsValidation[groupKey](update);
+    if (info.validate !== undefined) {
+      errors = info.validate(update);
     }
     if (errors.length == 0) {
-      chrome.storage.local.set({ [groupKey]: update }, () => {
+      chrome.storage.local.set({ [info.storageKey]: update }, () => {
         let msg;
         if (chrome.runtime.lastError) {
           msg = `Failed to save settings: ${chrome.runtime.lastError}`;
         } else {
           msg = "Settings saved";
         }
-        document.getElementById(`${groupKey}-options-save-message`).textContent = msg;
+        document.getElementById(`${info.storageKey}-options-save-message`).textContent = msg;
         console.log(msg);
       });
     } else {
       let msg = "Settings not saved: " + errors.join("; ");
-      document.getElementById(`${groupKey}-options-save-message`).textContent = msg;
+      document.getElementById(`${info.storageKey}-options-save-message`).textContent = msg;
       console.log(msg);
     }
   });
 
   // reset the save message if there are any changes in the section
-  document.getElementById(`${groupKey}-options`).querySelectorAll("input, select").forEach((elem) => {
+  document.getElementById(`${info.storageKey}-options`).querySelectorAll("input, select").forEach((elem) => {
     elem.addEventListener("change", () => {
-      document.getElementById(`${groupKey}-options-save-message`).textContent = "";
+      document.getElementById(`${info.storageKey}-options-save-message`).textContent = "";
     });
   });
 }

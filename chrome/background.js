@@ -5,23 +5,20 @@ importScripts("settings.js");
 // Default preferences to set on initial install
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.get(
-    Object.keys(appSettings),
-    (result) => {
-      const update = {};
-      for (const groupKey of Object.keys(appSettings)) {
-        update[groupKey] = {};
-        for (const settingKey of Object.keys(appSettings[groupKey])) {
-          if (result[groupKey] && result[groupKey][settingKey]) {
-            update[groupKey][settingKey] = result[groupKey][settingKey];
-          } else {
-            update[groupKey][settingKey] = appSettings[groupKey][settingKey].default;
-          }
+  chrome.storage.local.get(appSettingsInfo.map(x => x.storageKey), (result) => {
+    const update = {};
+    for (const info of appSettingsInfo) {
+      update[info.storageKey] = {};
+      for (const setting of info.settings) {
+        if (result[info.storageKey] && result[info.storageKey][setting.settingKey]) {
+          update[info.storageKey][setting.settingKey] = result[info.storageKey][setting.settingKey];
+        } else {
+          update[info.storageKey][setting.settingKey] = setting.default;
         }
       }
-      chrome.storage.local.set(update);
-    },
-  );
+    }
+    chrome.storage.local.set(update);
+  });
 });
 
 // Messages sent from tabs
