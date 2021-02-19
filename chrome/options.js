@@ -1,25 +1,72 @@
 "use strict";
 
-// Functions to populate and save settings
 // assumes settings.js is run first
 
-chrome.storage.local.get(appSettingsInfo.map(x => x.storageKey), (result) => {
-  for (const info of appSettingsInfo) {
-    for (const setting of info.settings) {
-      if (result[info.storageKey] && result[info.storageKey][setting.settingKey]) {
-        const value = result[info.storageKey][setting.settingKey];
-        if (setting.type === "boolean") {
-          document.getElementById(`${info.storageKey}-${setting.settingKey}`).checked = value;
-        } else {
-          document.getElementById(`${info.storageKey}-${setting.settingKey}`).value = value;
-        }
-      }
-    }
-  }
-});
-
+// Add inputs for each setting, add save buttons
 for (const info of appSettingsInfo) {
-  // save action for each section
+  const optionsSection = document.createElement("div");
+  optionsSection.id = info.storageKey;
+  optionsSection.classList.add("options-section");
+  const header = document.createElement("h2");
+  header.textContent = info.name;
+  optionsSection.append(header);
+  const optionsSet = document.createElement("div");
+  optionsSet.id = `${info.storageKey}-options`;
+  optionsSet.classList.add("options-set");
+  optionsSection.append(optionsSet);
+
+  for (const setting of info.settings) {
+    const label = document.createElement("label");
+    label.setAttribute("for", `${info.storageKey}-${setting.settingKey}`);
+    label.textContent = setting.name;
+    const inputSection = document.createElement("div");
+    if (setting.type === "boolean") {
+      const input = document.createElement("input");
+      input.id = `${info.storageKey}-${setting.settingKey}`;
+      input.setAttribute("type", "checkbox");
+      inputSection.append(input);
+    } else if (setting.options !== undefined) {
+      const select = document.createElement("select");
+      select.id = `${info.storageKey}-${setting.settingKey}`;
+      for (const x of setting.options) {
+        const selectOption = document.createElement("option");
+        selectOption.setAttribute("value", x.value);
+        selectOption.textContent = x.name;
+        select.append(selectOption);
+      }
+      select.setAttribute("type", "text");
+      inputSection.append(select);
+    } else {
+      const input = document.createElement("input");
+      input.id = `${info.storageKey}-${setting.settingKey}`;
+      input.setAttribute("type", "text");
+      inputSection.append(input);
+    }
+    const inputDescription = document.createElement("div");
+    if (setting.description !== undefined) {
+      inputDescription.textContent = setting.description;
+    }
+
+    optionsSet.append(label);
+    optionsSet.append(inputSection);
+    optionsSet.append(inputDescription);
+  }
+
+  const saveSection = document.createElement("div");
+  saveSection.classList.add("options-set");
+  const buttonSection = document.createElement("div");
+  const button = document.createElement("button");
+  button.id = `${info.storageKey}-options-save`;
+  button.textContent = "Save";
+  buttonSection.append(button);
+  const messageSection = document.createElement("div");
+  messageSection.id = `${info.storageKey}-options-save-message`;
+  saveSection.append(buttonSection);
+  saveSection.append(messageSection);
+  optionsSection.append(saveSection);
+  document.getElementById("preferences").append(optionsSection);
+
+  // Save button
   document.getElementById(`${info.storageKey}-options-save`).addEventListener("click", () => {
     const update = {};
     for (const setting of info.settings) {
@@ -67,8 +114,23 @@ for (const info of appSettingsInfo) {
   });
 }
 
-// Build and update rows in the table of records
+// Populate and save settings
+chrome.storage.local.get(appSettingsInfo.map(x => x.storageKey), (result) => {
+  for (const info of appSettingsInfo) {
+    for (const setting of info.settings) {
+      if (result[info.storageKey] && result[info.storageKey][setting.settingKey]) {
+        const value = result[info.storageKey][setting.settingKey];
+        if (setting.type === "boolean") {
+          document.getElementById(`${info.storageKey}-${setting.settingKey}`).checked = value;
+        } else {
+          document.getElementById(`${info.storageKey}-${setting.settingKey}`).value = value;
+        }
+      }
+    }
+  }
+});
 
+// Build and update rows in the table of records
 const buildRow = (rowId, record) => {
   let row = document.createElement("tr");
   row.id = rowId;

@@ -195,7 +195,7 @@ const recordEventBatch = function (events, storageKey) {
 
   // cache the record on stoppages, submits, or just if it's been a while
   let enoughEventsToRecord = false;
-  if (autosaveFrequency) {
+  if (autosaveFrequency > 0) {
     eventsSinceLastSave += events.length;
     enoughEventsToRecord = eventsSinceLastSave >= autosaveFrequency;
   }
@@ -235,7 +235,7 @@ if (puzzle) {
     (result) => {
       // Get event-logging settings
       eventLogLevel = result.eventLogLevel || "full";
-      autosaveFrequency = result.nytSettings?.autosaveFrequency;
+      autosaveFrequency = result.nytSettings?.autosaveFrequency || 0;
 
       // Set up a new record variable or get an existing one from storage, then
       // either way, update with latest info

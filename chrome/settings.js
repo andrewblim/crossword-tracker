@@ -3,27 +3,128 @@ const appSettingsInfo = [
     storageKey: "general",
     name: "General",
     settings: [
-      { settingKey: "solverName", default: "", type: "string" },
-      { settingKey: "eventLogLevel", default: "full", type: "string" },
-      { settingKey: "logUserAgent", default: false, type: "boolean" },
+      {
+        settingKey: "solverName",
+        name: "Your name",
+        type: "string",
+        default: "",
+        description: "Your name, as you would like it recorded on the log."
+      },
+      {
+        settingKey: "eventLogLevel",
+        name: "Log level",
+        type: "string",
+        options: [
+          { value: "basic", name: "Events only"},
+          { value: "full", name: "Events and navigation"},
+        ],
+        default: "full",
+        description: "Amount of detail to log. \"Events only\" only captures basic game events. \"Events and navigation\" also captures your navigation around the grid and clues."
+      },
+      {
+        settingKey: "logUserAgent",
+        name: "Log user agent",
+        type: "boolean",
+        default: true,
+        description: "Whether or not to log user-agent info on the log."
+      },
     ],
+  },
+  {
+    storageKey: "nyt",
+    name: "New York Times",
+    settings: [
+      {
+        settingKey: "autosaveFrequency",
+        name: "Auto-save frequency",
+        default: 30,
+        type: "number",
+        description: "The frequency with which to auto-save event logs to browser storage while solving. (This is purely precautionary, because event logs are also automatically saved when completing or navigating away from a puzzle.) Every this-many events, we will save. Set to 0 for no auto-save."
+      },
+    ],
+    validate: (settings) => {
+      let errors = [];
+      if (settings.autosaveFrequency < 0) { errors.push("Autosave frequency must be >= 0"); }
+      return errors;
+    },
   },
   {
     storageKey: "image",
     name: "Image generation",
     settings: [
-      { settingKey: "width", default: 500, type: "number" },
-      { settingKey: "height", default: 750, type: "number" },
-      { settingKey: "margin", default: 50, type: "number" },
-      { settingKey: "backgroundColor", default: "lightgray", type: "string" },
-      { settingKey: "gridColor", default: "gray", type: "string" },
-      { settingKey: "fillableColor", default: "white", type: "string" },
-      { settingKey: "unfillableColor", default: "black", type: "string" },
-      { settingKey: "selectedColor", default: "yellow", type: "string" },
-      { settingKey: "highlightedColor", default: "lightblue", type: "string" },
-      { settingKey: "checkColor", default: "orange", type: "string" },
-      { settingKey: "revealColor", default: "red", type: "string" },
-      { settingKey: "animationSpeed", default: 1.0, type: "number" },
+      {
+        settingKey: "width",
+        name: "Width (px)",
+        type: "number",
+        default: 500,
+      },
+      {
+        settingKey: "height",
+        name: "Height (px)",
+        type: "number",
+        default: 750,
+      },
+      {
+        settingKey: "margin",
+        name: "Margin around the image (px)",
+        type: "number",
+        default: 50,
+      },
+      {
+        settingKey: "backgroundColor",
+        name: "Background color",
+        type: "string",
+        default: "lightgray",
+      },
+      {
+        settingKey: "gridColor",
+        name: "Grid line color",
+        type: "string",
+        default: "gray",
+      },
+      {
+        settingKey: "fillableColor",
+        name: "Color of fillable squares",
+        type: "string",
+        default: "white",
+      },
+      {
+        settingKey: "unfillableColor",
+        name: "Color of unfillable squares",
+        type: "string",
+        default: "black",
+      },
+      {
+        settingKey: "selectedColor",
+        name: "Color of selected square",
+        type: "string",
+        default: "yellow",
+      },
+      {
+        settingKey: "highlightedColor",
+        name: "Color of highlighted squares",
+        type: "string",
+        default: "lightblue",
+      },
+      {
+        settingKey: "checkColor",
+        name: "Color of checked-square indicator",
+        type: "string",
+        default: "orange",
+      },
+      {
+        settingKey: "revealColor",
+        name: "Color of revealed-square indicator",
+        default: "red",
+        type: "string",
+      },
+      {
+        settingKey: "animationSpeed",
+        name: "Animation speed",
+        default: 1.0,
+        type: "number",
+        description: "The factor by which to speed up or slow down the animation. 1 is real time, > 1 is sped up, < 1 is slowed down."
+      },
     ],
     validate: (settings) => {
       let errors = [];
@@ -37,16 +138,4 @@ const appSettingsInfo = [
       return errors;
     },
   },
-  {
-    storageKey: "nyt",
-    name: "New York Times",
-    settings: [
-      { settingKey: "autosaveFrequency", default: 30, type: "number" },
-    ],
-    validate: (settings) => {
-      let errors = [];
-      if (settings.autosaveFrequency <= 0) { errors.push("Autosave frequency must be > 0"); }
-      return errors;
-    },
-  }
 ]
