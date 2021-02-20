@@ -55,10 +55,16 @@ for (const info of appSettingsInfo) {
   const saveSection = document.createElement("div");
   saveSection.classList.add("options-set");
   const buttonSection = document.createElement("div");
-  const button = document.createElement("button");
-  button.id = `${info.storageKey}-options-save`;
-  button.textContent = "Save";
-  buttonSection.append(button);
+  const saveButton = document.createElement("button");
+  saveButton.id = `${info.storageKey}-options-save`;
+  saveButton.textContent = "Save";
+  buttonSection.append(saveButton);
+  const resetButton = document.createElement("button");
+  resetButton.id = `${info.storageKey}-options-reset`;
+  resetButton.textContent = "Reset to defaults";
+  buttonSection.append(saveButton);
+  buttonSection.append(resetButton);
+
   const messageSection = document.createElement("div");
   messageSection.id = `${info.storageKey}-options-save-message`;
   saveSection.append(buttonSection);
@@ -105,6 +111,45 @@ for (const info of appSettingsInfo) {
       console.log(msg);
     }
   });
+
+  // Reset button
+  document.getElementById(`${info.storageKey}-options-reset`).addEventListener("click", () => {
+    let verify = confirm("Are you sure you want to reset to defaults for this section?");
+    if (verify) {
+      const update = {};
+      for (const setting of info.settings) {
+        switch (setting.type) {
+          case "boolean":
+            document.getElementById(`${info.storageKey}-${setting.settingKey}`).checked = setting.default;
+            break;
+          default:
+            document.getElementById(`${info.storageKey}-${setting.settingKey}`).value = setting.default;
+            break;
+        }
+        update[setting.settingKey] = setting.default;
+      }
+      let errors = [];
+      if (info.validate !== undefined) {
+        errors = info.validate(update);
+      }
+      if (errors.length == 0) {
+        chrome.storage.local.set({ [info.storageKey]: update }, () => {
+          let msg;
+          if (chrome.runtime.lastError) {
+            msg = `Failed to save settings: ${chrome.runtime.lastError}`;
+          } else {
+            msg = "Settings saved";
+          }
+          document.getElementById(`${info.storageKey}-options-save-message`).textContent = msg;
+          console.log(msg);
+        });
+      } else {
+        let msg = "Settings not saved: " + errors.join("; ");
+        document.getElementById(`${info.storageKey}-options-save-message`).textContent = msg;
+        console.log(msg);
+      }
+    }
+  })
 
   // reset the save message if there are any changes in the section
   document.getElementById(`${info.storageKey}-options`).querySelectorAll("input, select").forEach((elem) => {

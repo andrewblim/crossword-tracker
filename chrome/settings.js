@@ -37,7 +37,7 @@ const appSettingsInfo = [
       {
         settingKey: "autosaveFrequency",
         name: "Auto-save frequency",
-        default: 30,
+        default: 100,
         type: "number",
         description: "The frequency with which to auto-save event logs to browser storage while solving. (This is purely precautionary, because event logs are also automatically saved when completing or navigating away from a puzzle.) Every this-many events, we will save. Set to 0 for no auto-save."
       },
