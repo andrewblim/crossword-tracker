@@ -33,11 +33,12 @@ Although presumably having two clue sections `"Across"` and `"Down"` will be com
 
 **Mandatory.** Represents the initial state of the board. This contains information both about the shape of the grid and any squares that were already filled when logging started (which would happen, for example, if you started a log partway into a solve).
 
-It maps to an array of JSON objects `{ fill, label, x, y }`, each representing a square of the puzzle:
+It maps to an array of JSON objects, each representing a square of the puzzle, with the following keys:
 
 - `fill`: (string or null, mandatory) The contents of this square. A blank but fillable square should have the empty string `""`. A non-fillable square should have `null`.
 - `label`: (string, optional) The clue number labeling this square, if one exists. Technically there are no further restrictions. But a standard crossword would have `label`s consistent the grid shape and correspondent to entries in `clueSections`, and would not have a `label` field on any non-fillable square.
 - `x`, `y`: (non-negative integer, mandatory) The (x,y) position of this square. (0,0) is the upper-left corner of the crossword, the x-coordinate increases going right, and the y-coordinate increases going down. There should be at most one entry for a given (x,y).
+- `extraShape`: (string, optional) If present, an extra shape that is drawn within the square. Currently the only supported value is `"circle"`.
 
 ## `events`
 

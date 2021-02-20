@@ -144,7 +144,7 @@ const updateRecordingStatus = function(record) {
 const captureBoardState = function () {
   let boardState = [];
   forEachCell((_, cell) => {
-    let x, y, label, fill;
+    let x, y, label, fill, hasCircle = false;
     ({ x, y } = getXYForCell(cell));
     if (cell.classList.contains(cellClass)) {
       let labelElem = cell.parentElement.querySelector("[text-anchor=start]");
@@ -155,12 +155,17 @@ const captureBoardState = function () {
       if (fillElem !== null) {
         fill = Array.from(fillElem.childNodes).find(x => x.nodeType === 3)?.data;
       }
+      let circleElem = cell.parentElement.querySelector("circle");
+      if (circleElem !== null) {
+        hasCircle = true;
+      }
     } else if (cell.classList.contains(blockClass)) {
       label = undefined;
       fill = null; // denotes that it is a non-fillable cell
     }
     let cellState = { x, y, fill };
     if (label !== undefined) { cellState.label = label; }
+    if (hasCircle) { cellState.extraShape = "circle"; }
     boardState.push(cellState);
   });
   return boardState;

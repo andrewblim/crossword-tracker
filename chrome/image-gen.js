@@ -133,14 +133,15 @@ const createSolveAnimationWithSettings = function(record, settings) {
   fillG.setAttribute("text-anchor", "middle");
   fillG.setAttribute("visibility", "hidden");
 
-  const squaresByPosition = {}
-  const fillByPosition = {}
-  const positionsByLabel = {}
+  const squaresByPosition = {};
+  const fillByPosition = {};
+  const positionsByLabel = {};
   for (const sq of record["initialState"]) {
     const square = document.createElementNS(svgNS, "rect");
     const squareX = margin + sq.x * sqSize;
     const squareY = margin + topOffset + sq.y * sqSize;
     const posKey = `${sq.x}-${sq.y}`
+    let extraShape;
     square.setAttribute("width", sqSize);
     square.setAttribute("height", sqSize);
     square.setAttribute("x", squareX);
@@ -148,6 +149,12 @@ const createSolveAnimationWithSettings = function(record, settings) {
     squaresByPosition[posKey] = square;
     if (sq.fill !== null) {
       square.setAttribute("fill", fillableColor);
+      if (sq.extraShape === "circle") {
+        extraShape = document.createElementNS(svgNS, "circle");
+        extraShape.setAttribute("cx", squareX + sqSize / 2);
+        extraShape.setAttribute("cy", squareY + sqSize / 2);
+        extraShape.setAttribute("r", sqSize / 2);
+      }
       if (sq.fill !== "") {
         const fill = document.createElementNS(svgNS, "text");
         fill.setAttribute("x", squareX + 0.5 * sqSize);
@@ -161,6 +168,7 @@ const createSolveAnimationWithSettings = function(record, settings) {
       square.setAttribute("fill", unfillableColor);
     }
     squaresG.append(square);
+    if (extraShape !== undefined) { squaresG.append(extraShape); }
     if (sq.label) {
       const label = document.createElementNS(svgNS, "text");
       label.setAttribute("x", squareX + 0.1 * sqSize);
