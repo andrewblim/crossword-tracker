@@ -57,24 +57,7 @@ const forEachCell = (f) => {
   }
 }
 
-// get basic info that we need to determine a storage key
-
-const getPuzzleTitle = (puzzle) => {
-  return puzzle.querySelector(`.${titleClass}`)?.textContent;
-}
-
-const getPuzzleDate = (puzzle) => {
-  return puzzle.querySelector(`.${dateClass}`)?.textContent;
-}
-
-const getPuzzleByline = (puzzle) => {
-  // byline info is in one or more sub-spans
-  const bylineElem = puzzle.querySelector(`.${bylineClass}`);
-  if (bylineElem) {
-    return Array.from(bylineElem.children).map(x => x.textContent).join(" - ");
-  }
-}
-
+// Extract clue sections from the puzzle
 const getClueSections = (puzzle) => {
   let clueSections = {};
   for (const wrapperElem of puzzle.querySelectorAll(`.${clueListWrapperClass}`)) {
@@ -92,6 +75,8 @@ const getClueSections = (puzzle) => {
   return clueSections;
 }
 
+// Extract board state from the puzzle - note that this relies on the ids of
+// cell elements, so we don't end up passing the puzzle element as an argument
 const getBoardState = () => {
   const boardState = [];
   forEachCell((_, cell) => {
@@ -124,12 +109,16 @@ const getBoardState = () => {
 const updateRecordMetadata = (record, userInfo, puzzle) => {
   record.version = "0.1";
   record.url = window.location.href;
-  const title = getPuzzleTitle(puzzle);
+  const title = puzzle.querySelector(`.${titleClass}`)?.textContent;
   if (title !== undefined) { record.title = title; }
-  const date = getPuzzleDate(puzzle);
+  const date = puzzle.querySelector(`.${dateClass}`)?.textContent;
   if (date !== undefined) { record.date = date; }
-  const byline = getPuzzleByline(puzzle);
-  if (byline !== undefined) { record.byline = byline; }
+
+  // byline info is in one or more sub-spans
+  const bylineElem = puzzle.querySelector(`.${bylineClass}`);
+  if (bylineElem) {
+    record.byline = Array.from(bylineElem.children).map(x => x.textContent).join(" - ");
+  }
 
   // Actively remove solverName and userAgent if not supplied in userInfo but
   // present in the supplied record
