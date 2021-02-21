@@ -90,3 +90,59 @@ Any further ties can be broken arbitrarily.
 The first event in `events` _must_ be a `start` event. From there, there cannot be another `start` event until there has been a `stop` event. Once there has been a `stop` event, there cannot be any other kind of event except another `start` event.
 
 A `submit` event that has `success` true cannot be followed by any other event - it represents the completion of the puzzle.
+
+## Puzzle identifier
+
+It is generally helpful to have a way to compactly uniquely identify a puzzle. (For example, in a browser extension, you might store record information locally keyed by this identifier; in a dataset of log files, you might use this to identify different attempts at solving the same puzzle.) Unfortunately simple approaches don't really work:
+
+- `url` is not always unique/stable, especially on "Today's puzzle"-type pages that are always updated with whatever the latest puzzle is
+- The tuple `(title, byline)` is not unique/stable. People sometimes put out multiple puzzles called, for example, "Today's Puzzle", or "Themeless". Also, people's names can change.
+- Incorporating `date` is a little awkward, because it's just a text field, so if a site changes how it formats its dates, or we want to try to impose some date/time standardization, we'll change the identifer.
+
+So the approach we take is to hash the puzzle grid information and clue text itself. Arguably if any of this information changed, you'd have a genuinely different puzzle. So it serves as a good identifier.
+
+The identifier is defined as the SHA1 of a UTF-8 JSON string representation (no whitespace) of the following data structure:
+
+- A two element array, whose elements represent the grid and clues, respectively
+- First element (grid):
+  - An array of two-element arrays containing the (x,y) position of each fillable square, in sorted order first by y, then x
+  - Example: `[[0,0], [0,1], [1,0]]` would be a 2x2 grid with the bottom-right square unfillable
+  - `[[0,0], [1,0], [0,1]]` would be incorrect, as it is not sorted correctly
+- Second element (clues):
+  - An array of two-element arrays, each of which represents a clue section
+  - The first element of each two-element array is the clue section label, and the second is another array of two-element arrays containing clue labels and clue text
+  - As mentioned above, clue labels are strings, not numbers, so `"1"`, not `1`
+  - The ordering for each section should be in whatever ordering the puzzle gives them in
+  - Example: `[["Across", [["1", "1-A Clue"]]], ["Down", [["1", "1-D Clue"]]]]` is clue information for two sections of clues, "Across" and "Down", each of which has one clue.
+
+Complete example:
+
+```
+[
+  [[0,0], [0,1], [1,0], [1,1]],
+  [
+    [
+      "Across",
+      [
+        ["1","Rare blood type"],
+        ["3","MP3 predecessor"]
+      ]
+    ],
+    [
+      "Down",
+      [
+        ["1", "Cooling, for short"],
+        ["2", "Tony winner Wong"],
+      ]
+    ]
+  ]
+]
+```
+
+This would be turned into the following JSON string without whitespace:
+
+```
+[[[0,0],[0,1],[1,0],[1,1]],[["Across",[["1","Rare blood type"],["3","MP3 predecessor"]]],["Down",[["1","Cooling, for short"],["2","Tony winner Wong"]]]]]
+```
+
+which has an SHA1 of `cbf96babac8adeeeb8235985c23f77aafdd2d4c`.

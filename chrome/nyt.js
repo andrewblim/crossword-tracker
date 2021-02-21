@@ -120,26 +120,6 @@ const getBoardState = () => {
   return boardState;
 };
 
-const computedPuzzleId = (boardState, clueSections) => {
-  const boardArray = Array.from(boardState)
-    .filter(({ fill }) => fill !== undefined && fill !== null)
-    .map(({ x, y }) => [x, y])
-    .sort((a, b) => {
-      if (a[0] !== b[0]) { return a[0] - b[0]; }
-      return a[1] - b[1];
-    });
-  const clueSectionHeaders = Object.keys(clueSections).sort();
-  const clueSectionArray = [];
-  for (const clueSectionHeader of clueSectionHeaders) {
-    clueSectionArray.push([
-      clueSectionHeader,
-      Array.from(clueSections[clueSectionHeader])
-        .map(({ label, text }) => [label, text]),
-    ]);
-  }
-  return `record-${hashCode(JSON.stringify([boardArray, clueSectionArray]))}`;
-};
-
 // Update record with metadata from the DOM and from supplied user info
 const updateRecordMetadata = (record, userInfo, puzzle) => {
   record.version = "0.1";
@@ -232,15 +212,10 @@ const recordEventBatch = (record, events, storageKey, observer) => {
   }
 };
 
-let autosaveFrequency, eventLogLevel;
-let eventsSinceLastSave = 0;
-
-// Only do anything if we were able to find the puzzle element.
-
-if (puzzle) {
+const initializeTracking = async () => {
   const boardState = getBoardState(puzzle);
   const clueSections = getClueSections(puzzle);
-  const storageKey = computedPuzzleId(boardState, clueSections);
+  const storageKey = await computedPuzzleId(boardState, clueSections);
 
   chrome.storage.local.get(
     [storageKey, "general", "nyt"],
@@ -421,4 +396,11 @@ if (puzzle) {
       });
     },
   );
-}
+};
+
+// Only do anything if we were able to find the puzzle element.
+
+let autosaveFrequency, eventLogLevel;
+let eventsSinceLastSave = 0;
+
+if (puzzle) { initializeTracking(); }

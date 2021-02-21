@@ -36,27 +36,6 @@ const humanizedRecordName = function(record) {
   return name.join(" - ");
 }
 
-// Implementation of Java's hashCode - just need some simple hash function.
-// From https://stackoverflow.com/questions/6122571/simple-non-secure-hash-function-for-javascript
-// with minor modifications
-
-const hashCode = function(x) {
-  let hash = 0;
-  if (x.length == 0) {
-    return hash;
-  }
-  for (let i = 0; i < x.length; i++) {
-    var char = x.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return hash;
-}
-
-const recordStorageKey = function(title, date, byline) {
-  return `record-${hashCode(JSON.stringify({ title, date, byline }))}`;
-}
-
 // Suggested filenames for file-saving functionality
 const suggestedRecordFilename = function(record, suffix) {
   let filename = "";
@@ -125,3 +104,33 @@ const currentlySolved = function(record) {
     record.events[record.events.length - 1].success
   );
 }
+
+// Return a puzzle identifier based on the board state array and the mapping of
+// clue sections as defined in the standard log format. Relies on
+// crypto.subtle's SHA1 functionality, which is asynchronous, so this may need
+// to be called with an await.
+const computedPuzzleId = async (boardState, clueSections) => {
+  const boardArray = Array.from(boardState)
+    .filter(({ fill }) => fill !== undefined && fill !== null)
+    .map(({ x, y }) => [x, y])
+    .sort((a, b) => {
+      if (a[0] !== b[0]) { return a[0] - b[0]; }
+      return a[1] - b[1];
+    });
+  const clueSectionHeaders = Object.keys(clueSections).sort();
+  const clueSectionArray = [];
+  for (const clueSectionHeader of clueSectionHeaders) {
+    clueSectionArray.push([
+      clueSectionHeader,
+      Array.from(clueSections[clueSectionHeader])
+        .map(({ label, text }) => [label, text]),
+    ]);
+  }
+  const puzzleRepr = JSON.stringify([boardArray, clueSectionArray]);
+  const digestBytes = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(puzzleRepr));
+  const digest = Array.prototype.map.call(
+    new Uint8Array(digestBytes),
+    x => x.toString(16).padStart("0")
+  ).join("")
+  return `record-${digest}`;
+};
