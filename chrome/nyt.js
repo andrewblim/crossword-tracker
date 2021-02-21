@@ -251,7 +251,7 @@ if (puzzle) {
 
       // Set up a new record variable or get an existing one from storage, then
       // either way, update with latest info
-      const record = result[storageKey] || {};
+      let record = result[storageKey] || {};
       const userInfo = {
         solverName: result.general.solverName,
         userAgent: result.general.logUserAgent,
