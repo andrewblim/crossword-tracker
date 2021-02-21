@@ -93,6 +93,7 @@ const getClueSections = (puzzle) => {
 }
 
 const getBoardState = () => {
+  const boardState = [];
   forEachCell((_, cell) => {
     let x, y, label, fill, hasCircle = false;
     ({ x, y } = getXYForCell(cell));
@@ -136,7 +137,7 @@ const computedPuzzleId = (boardState, clueSections) => {
         .map(({ label, text }) => [label, text]),
     ]);
   }
-  return hashCode(JSON.stringify([boardArray, clueSectionArray]));
+  return `record-${hashCode(JSON.stringify([boardArray, clueSectionArray]))}`;
 };
 
 // Update record with metadata from the DOM and from supplied user info
@@ -164,7 +165,7 @@ const updateRecordMetadata = (record, userInfo, puzzle) => {
   }
 }
 
-const updateRecordingStatus = (record) => {
+const updateRecordingStatus = (record, observer) => {
   if (currentlySolved(record)) {
     observer.disconnect();
     chrome.runtime.sendMessage({ action: "setBadgeSolved" });
@@ -183,7 +184,7 @@ const updateRecordingStatus = (record) => {
 
 // Record a batch of events
 
-const recordEventBatch = (events, storageKey) => {
+const recordEventBatch = (record, events, storageKey, observer) => {
   // Don't record anything if we are stopped, unless there is a start event
   // in the event batch. This prevents us from incorrectly creating events
   // if we load a puzzle that already has fill.
@@ -231,7 +232,6 @@ const recordEventBatch = (events, storageKey) => {
   }
 };
 
-let record, observer;
 let autosaveFrequency, eventLogLevel;
 let eventsSinceLastSave = 0;
 
@@ -251,7 +251,7 @@ if (puzzle) {
 
       // Set up a new record variable or get an existing one from storage, then
       // either way, update with latest info
-      record = result[storageKey] || {};
+      const record = result[storageKey] || {};
       const userInfo = {
         solverName: result.general.solverName,
         userAgent: result.general.logUserAgent,
@@ -264,28 +264,10 @@ if (puzzle) {
       if (!record.initialState) { record.initialState = boardState; }
       if (!record.events) { record.events = []; }
 
-      // If we navigate away/close tab, and there has been at least one event,
-      // record a stop event if we aren't already stopped, and cache the record
-      // so that we don't lose progress.
-      window.onbeforeunload = () => {
-        if (!currentlyStopped(record) && !currentlyUnstarted(record)) {
-          recordEventBatch(
-            [{ type: "stop", timestamp: new Date().getTime() }],
-            storageKey,
-          );
-          chrome.runtime.sendMessage(
-            { action: "cacheRecord", key: storageKey, record: record },
-          );
-        }
-      };
-
-      // Create and start observer with callback
-      const puzzleCallback = (mutationsList, _observer) => {
-        // record timestamp now, to ensure that all events generated from a
-        // single callback call have the same timestamp
-        let newEvents = [];
-        let timestamp = new Date().getTime();
-
+      // Main callback that monitors the puzzle
+      const puzzleCallback = (mutationsList, observer) => {
+        const newEvents = [];
+        const timestamp = new Date().getTime();
         for (const mutation of mutationsList) {
           switch (mutation.type) {
             case "characterData":
@@ -357,11 +339,28 @@ if (puzzle) {
               break;
           }
         }
-        recordEventBatch(newEvents, storageKey);
+        recordEventBatch(record, newEvents, storageKey, observer);
       };
 
-      observer = new MutationObserver(puzzleCallback);
-      updateRecordingStatus(record);
+      const observer = new MutationObserver(puzzleCallback);
+      updateRecordingStatus(record, observer);
+
+      // If we navigate away/close tab, and there has been at least one event,
+      // record a stop event if we aren't already stopped, and cache the record
+      // so that we don't lose progress.
+      window.onbeforeunload = () => {
+        if (!currentlyStopped(record) && !currentlyUnstarted(record)) {
+          recordEventBatch(
+            record,
+            [{ type: "stop", timestamp: new Date().getTime() }],
+            storageKey,
+            observer,
+          );
+          chrome.runtime.sendMessage(
+            { action: "cacheRecord", key: storageKey, record: record },
+          );
+        }
+      };
 
       // Allow interaction with popup. This generally happens synchronously,
       // we don't need these to run quickly/in parallel and we would like to
@@ -410,7 +409,7 @@ if (puzzle) {
                     record.clueSections = getClueSections(puzzle);
                     record.initialState = getBoardState(puzzle);
                     record.events = [];
-                    updateRecordingStatus(record);
+                    updateRecordingStatus(record, observer);
                   }
                 }
                 return true; // force synchronous
